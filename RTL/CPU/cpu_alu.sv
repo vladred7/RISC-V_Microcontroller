@@ -28,10 +28,11 @@ module cpu_alu #(
    //Compute ALU Flags
    assign zero = (alu_out == 0);
 
-   //Designer Assertions
-   a_xcheck_alu_out:  assert(!$isunknown(alu_out))       else $error($sformatf("ERROR SVA: alu_out has X!!!"));
-   a_xcheck_zero:     assert(!$isunknown(zero))          else $error($sformatf("ERROR SVA: zero has X!!!"));
-   a_zero_flag_check: assert(zero === (alu_out === 0))   else $error($sformatf("ERROR SVA: zero is set while alu_out != 0!!!"));
-   //TODO add more assertions
+   `ifdef DESIGNER_ASSERTIONS
+      a_xcheck_alu_out:  assert(!$isunknown(alu_out))       else $error($sformatf("ERROR SVA: alu_out has X!!!"));
+      a_xcheck_zero:     assert(!$isunknown(zero))          else $error($sformatf("ERROR SVA: zero has X!!!"));
+      a_zero_flag_check: assert(zero === (alu_out === 0))   else $error($sformatf("ERROR SVA: zero is set while alu_out != 0!!!"));
+      //TODO add more assertions
+   `endif
 
 endmodule : cpu_alu

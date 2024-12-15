@@ -26,16 +26,18 @@ module cpu_reg_bank #(
 
    //Write Channel
    always_ff @(posedge clk or negedge rst_n) begin
-      if (!rst_n)
-         reg_bank <= '0; //if reset is asserted reset all the memory locations to 0
-      else if(wen3)
+      if (!rst_n) begin
+         for (int i = 0; i < (2**ADDR_WIDTH); i++) begin
+            reg_bank[i] <= '0; //if reset is asserted reset all the memory locations to 0
+         end
+      end else if(wen3)
          reg_bank[a3] <= wd3;
    end
       
-
-   //Designer Assertions
-   a_a1_noteq_a3: assert(a1 !== a3) else $warning($sformatf("WARNING SVA: a3 is equal to a1! addr=%0h",a3));
-   a_a2_noteq_a3: assert(a2 !== a3) else $warning($sformatf("WARNING SVA: a3 is equal to a2! addr=%0h",a3));
-   ap_a3_noteq_0: assert property(disable iff (!rst_n)  @(posedge clk)  wen3 |-> (a3 !== 0);) else $error($sformatf("ERROR SVA: Cannot write address 0 because it is hardwired to 0's!!!"));
+   `ifdef DESIGNER_ASSERTIONS
+      a_a1_noteq_a3: assert(a1 !== a3) else $warning($sformatf("WARNING SVA: a3 is equal to a1! addr=%0h",a3));
+      a_a2_noteq_a3: assert(a2 !== a3) else $warning($sformatf("WARNING SVA: a3 is equal to a2! addr=%0h",a3));
+      ap_a3_noteq_0: assert property(disable iff (!rst_n)  @(posedge clk)  wen3 |-> (a3 !== 0);) else $error($sformatf("ERROR SVA: Cannot write address 0 because it is hardwired to 0's!!!"));
+   `endif
 
 endmodule : cpu_reg_bank

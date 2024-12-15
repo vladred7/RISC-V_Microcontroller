@@ -2,7 +2,7 @@ module cpu_top #(
     parameter ADDR_WIDTH = 5,
     parameter DATA_WIDTH = 32
 )(
-	input clk,    // Clock
+	input clk    // Clock
 	
 );
 
