@@ -1,6 +1,6 @@
 module cpu_reg_bank #(
-    parameter ADDR_WIDTH = 5,
-    parameter DATA_WIDTH = 32
+   parameter ADDR_WIDTH = 5,
+   parameter DATA_WIDTH = 32
 )( 
    //    Input ports definition
 	input                   clk,
@@ -17,7 +17,7 @@ module cpu_reg_bank #(
 
    import pkg_cpu_typedefs::*;
    
-
+   //Declare the register bank as an array of registers
    logic [DATA_WIDTH-1:0] reg_bank[1:(2**ADDR_WIDTH)-1]; //note: address 0 will always be hardwired to 0 so real bank is defined without index 0
 
    //Read Channels

@@ -1,12 +1,12 @@
 module cpu_alu #(
-    parameter DATA_WIDTH = 32
+   parameter DATA_WIDTH = 32
 )(
    //    Input ports definition
    input  [DATA_WIDTH-1:0] in_a,
    input  [DATA_WIDTH-1:0] in_b,
    input             [2:0] op_sel,
    //    Output ports definition
-   output                  zero,
+   output                  z_flag,
    output [DATA_WIDTH-1:0] alu_out
 );
 
@@ -26,12 +26,12 @@ module cpu_alu #(
    end
 
    //Compute ALU Flags
-   assign zero = (alu_out == 0);
+   assign z_flag = (alu_out == 0);
 
    `ifdef DESIGNER_ASSERTIONS
       a_xcheck_alu_out:  assert(!$isunknown(alu_out))       else $error($sformatf("ERROR SVA: alu_out has X!!!"));
-      a_xcheck_zero:     assert(!$isunknown(zero))          else $error($sformatf("ERROR SVA: zero has X!!!"));
-      a_zero_flag_check: assert(zero === (alu_out === 0))   else $error($sformatf("ERROR SVA: zero is set while alu_out != 0!!!"));
+      a_xcheck_zero:     assert(!$isunknown(z_flag))          else $error($sformatf("ERROR SVA: z_flag has X!!!"));
+      a_zero_flag_check: assert(z_flag === (alu_out === 0))   else $error($sformatf("ERROR SVA: z_flag is set while alu_out != 0!!!"));
       //TODO add more assertions
    `endif
 

@@ -18,6 +18,6 @@ module nvm_mem #(
       if (we)
          reg_map[addr] <= wd;
 
-   assign rd = reg_map[addr];
+   assign rd = reg_map[addr]; //FIXME: Look at page 395(417)
 
 endmodule : nvm_mem
