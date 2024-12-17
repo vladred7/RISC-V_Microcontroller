@@ -6,6 +6,10 @@
 # Output: A binary/hex file containing the machine code                                #
 ########################################################################################
 
+#TODOs
+#add support for asm directives
+#add support for pseudo-instructions
+
 # RISC-V opcode dictionary
 opc = {
    'lw'    : '0000011',   'LW'    : '0000011',    #load word

@@ -43,7 +43,32 @@ package pkg_cpu_typedefs;
       T5    = 'd30,  // Temporary Register 5
       T6    = 'd31   // Temporary Register 6
    } cpu_regset_t;
-   
-   
-   
+
+   typedef struct packed {
+      logic [6:0] funct7;  //bits [31:25] of the instruction
+      logic [4:0] rs2;     //bits [24:20] of the instruction
+      logic [4:0] rs1;     //bits [19:15] of the instruction
+      logic [2:0] funct3;  //bits [14:12] of the instruction
+      logic [4:0] rd;      //bits [11: 7] of the instruction
+      logic [6:0] opc;     //bits [ 6: 0] of the instruction
+   } instr_t;
+
+   typedef struct packed {
+      logic [24:0] imd_data;  //bits [31: 7] of the instruction
+      logic [ 6:0] not_used;  //bits [ 6: 0] of the instruction
+   } immediate_t;
+
+   typedef union packed {
+      instr_t      instruction;
+      immediate_t  data;
+   } instr_reg_t;
+
+   typedef enum bit [2:0] {
+      FETCH       = 'd0, //Fetch stage - access the memory based on PC and calculate next_PC in ALU
+      DECODE      = 'd1, //Decode stage - decode the current instruction and calculate the branch address in ALU
+      EXECUTE     = 'd2, //Execute stage - execute the specific instruction
+      MEM_ACC     = 'd3, //Memory stage - read/write to the memory
+      RFL_WRB     = 'd4  //Write Back stage - write the register file if needed
+   } cpu_state_t;
+
 endpackage : pkg_cpu_typedefs

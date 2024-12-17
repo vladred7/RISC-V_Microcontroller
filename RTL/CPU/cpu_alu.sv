@@ -29,7 +29,7 @@ module cpu_alu #(
    assign z_flag = (alu_out == 0);
 
    `ifdef DESIGNER_ASSERTIONS
-      a_xcheck_alu_out:  assert(!$isunknown(alu_out))       else $error($sformatf("ERROR SVA: alu_out has X!!!"));
+      a_xcheck_alu_out:  assert(!$isunknown(alu_out))         else $error($sformatf("ERROR SVA: alu_out has X!!!"));
       a_xcheck_zero:     assert(!$isunknown(z_flag))          else $error($sformatf("ERROR SVA: z_flag has X!!!"));
       a_zero_flag_check: assert(z_flag === (alu_out === 0))   else $error($sformatf("ERROR SVA: z_flag is set while alu_out != 0!!!"));
       //TODO add more assertions

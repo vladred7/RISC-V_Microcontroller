@@ -22,4 +22,8 @@ module cpu_program_counter  #(
 
    assign pc_out = pc_val;
 
+   `ifdef DESIGNER_ASSERTIONS
+      //TODO add assertions
+   `endif
+
 endmodule : cpu_program_counter

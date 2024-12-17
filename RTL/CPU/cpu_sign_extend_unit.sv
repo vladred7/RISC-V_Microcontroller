@@ -23,4 +23,8 @@ module cpu_sign_extend_unit #(
 
    assign imd_ext = mux_out;
 
+   `ifdef DESIGNER_ASSERTIONS
+      //TODO add assertions
+   `endif
+
 endmodule : cpu_sign_extend_unit
