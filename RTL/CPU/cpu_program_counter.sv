@@ -12,7 +12,7 @@ module cpu_program_counter  #(
    
    logic [ADDR_WIDTH-1:0] pc_val;
 
-   always_ff @(posedge clk or negedge rst_n) begin : pc
+   always_ff @(posedge clk or negedge rst_n) begin
       if(!rst_n) begin
          pc_val <= '0;
       end else if(ld) begin

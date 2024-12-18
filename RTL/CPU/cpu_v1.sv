@@ -4,7 +4,7 @@ module cpu_v1 #(
    parameter REG_FILE_ADDR_WIDTH = 5
 )(
 	input sys_clk,
-   input sys_rst_n,
+   input sys_rst_n
 	
 );
 
@@ -63,7 +63,7 @@ module cpu_v1 #(
 
    cpu_program_counter #(
       .ADDR_WIDTH(ADDR_WIDTH)
-   ) pc(
+   ) program_counter(
       //    Input ports
       .clk           ( sys_clk                     ),
       .rst_n         ( sys_rst_n                   ),
@@ -73,10 +73,10 @@ module cpu_v1 #(
       .pc_out        ( pc                          )
    );
 
-   always_ff @(posedge sys_clk or negedge sys_rst_n) begin : pc_prev_ff
+   always_ff @(posedge sys_clk or negedge sys_rst_n) begin
       if(!sys_rst_n) begin
          pc_prev_ff <= '0;
-      end else begin
+      end else begin //FIXME : Do i need to capture this only in FETCH? might need to add the instr_wr_en here too!
          pc_prev_ff <= pc;
       end
    end
@@ -102,7 +102,7 @@ module cpu_v1 #(
       .rd            ( mem_data_out                )
    );
 
-   always_ff @(posedge sys_clk or negedge sys_rst_n) begin : instr_ff
+   always_ff @(posedge sys_clk or negedge sys_rst_n) begin
       if(!sys_rst_n) begin
          instr_ff <= '0;
       end else begin
@@ -112,7 +112,7 @@ module cpu_v1 #(
 
    assign instr = instr_ff;
 
-   always_ff @(posedge sys_clk or negedge sys_rst_n) begin : data_ff
+   always_ff @(posedge sys_clk or negedge sys_rst_n) begin
       if(!sys_rst_n) begin
          data_ff <= '0;
       end else begin
@@ -166,7 +166,7 @@ module cpu_v1 #(
       .rd2           ( regfl_data_b                )
    );
 
-   always_ff @(posedge sys_clk or negedge sys_rst_n) begin : data_a_ff
+   always_ff @(posedge sys_clk or negedge sys_rst_n) begin
       if(!sys_rst_n) begin
          data_a_ff <= '0;
       end else begin
@@ -176,7 +176,7 @@ module cpu_v1 #(
 
    assign data_a = data_a_ff;
 
-   always_ff @(posedge sys_clk or negedge sys_rst_n) begin : data_b_ff
+   always_ff @(posedge sys_clk or negedge sys_rst_n) begin
       if(!sys_rst_n) begin
          data_b_ff <= '0;
       end else begin
@@ -232,7 +232,7 @@ module cpu_v1 #(
       .alu_out       ( alu_out                     )
    );
 
-   always_ff @(posedge sys_clk or negedge sys_rst_n) begin : 
+   always_ff @(posedge sys_clk or negedge sys_rst_n) begin
       if(!sys_rst_n) begin
          alu_result_ff <= 0;
       end else begin

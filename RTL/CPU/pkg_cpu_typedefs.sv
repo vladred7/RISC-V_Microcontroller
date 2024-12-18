@@ -6,7 +6,6 @@ package pkg_cpu_typedefs;
       AND   = 3'b010,
       OR    = 3'b011,
       SLT   = 3'b101
-      //TODO add all possible operations
    } alu_opcode_t;
 
    typedef enum bit [4:0] {
@@ -63,12 +62,24 @@ package pkg_cpu_typedefs;
       immediate_t  data;
    } instr_reg_t;
 
-   typedef enum bit [2:0] {
+   typedef enum bit [2:0] { //TODO Gray code the cpu_states
       FETCH       = 'd0, //Fetch stage - access the memory based on PC and calculate next_PC in ALU
       DECODE      = 'd1, //Decode stage - decode the current instruction and calculate the branch address in ALU
       EXECUTE     = 'd2, //Execute stage - execute the specific instruction
       MEM_ACC     = 'd3, //Memory stage - read/write to the memory
       RFL_WRB     = 'd4  //Write Back stage - write the register file if needed
    } cpu_state_t;
+
+   typedef enum bit [6:0] { //These instruction opcodes represents the RV32I set
+      LOAD     = 7'b0000011,
+      I_TYPE   = 7'b0010011,
+      AUI_PC   = 7'b0010111,
+      S_TYPE   = 7'b0100011,
+      R_TYPE   = 7'b0110011,
+      LUI      = 7'b0110111,
+      B_TYPE   = 7'b1100011,
+      JALR     = 7'b1100111,
+      J_TYPE   = 7'b1101111
+   } cpu_opcode_t;
 
 endpackage : pkg_cpu_typedefs

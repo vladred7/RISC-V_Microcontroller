@@ -27,7 +27,7 @@ module cpu_reg_bank #(
    //Write Channel
    always_ff @(posedge clk or negedge rst_n) begin
       if (!rst_n) begin
-         for (int i = 0; i < (2**ADDR_WIDTH); i++) begin
+         for (int i = 1; i < (2**ADDR_WIDTH); i++) begin
             reg_bank[i] <= '0; //if reset is asserted reset all the memory locations to 0
          end
       end else if(wen3)

@@ -11,19 +11,23 @@ module cpu_alu #(
 );
 
    import pkg_cpu_typedefs::*;
+
+   logic[DATA_WIDTH-1:0] result;
    
    //Compute ALU Result
    always_comb begin
-      alu_out = '0; //Default case
+      result = '0; //Default case
       case (op_sel)
-         ADD: alu_out = in_a + in_b;
-         SUB: alu_out = in_a - in_b;
-         AND: alu_out = in_a & in_b;
-         OR : alu_out = in_a | in_b;
-         SLT: alu_out = in_a < in_b;
-         //TODO implement rest of the ops
+         ADD: result = in_a + in_b;
+         SUB: result = in_a - in_b;
+         AND: result = in_a & in_b;
+         OR : result = in_a | in_b;
+         SLT: result = in_a < in_b;
       endcase
    end
+
+   //Assign alu_out the restul
+   assign alu_out = result;
 
    //Compute ALU Flags
    assign z_flag = (alu_out == 0);
