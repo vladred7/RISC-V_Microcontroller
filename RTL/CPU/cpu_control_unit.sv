@@ -110,8 +110,8 @@ module cpu_control_unit (
                         //LUI    : ctrl_vect = ;
                         R_TYPE : ctrl_vect = 13'b0_0_0_0_0_10_00_10_00;
                         I_TYPE : ctrl_vect = 13'b0_0_0_0_0_10_01_10_00;
-                        //AUI_PC : ctrl_vect = ;
-                        //JALR   : ctrl_vect = ;
+                        //AUI_PC : ctrl_vect = 13'b0_0_0_0_0_00_01_00_00; //need to update imd_src logic
+                        //JALR   : ctrl_vect = 13'; //need to update the decode phase 
                         J_TYPE : ctrl_vect = 13'b1_0_0_0_0_01_10_00_00;
                         B_TYPE : ctrl_vect = {branch, 12'b0_0_0_0_10_00_01_00}; //branch if zero (TODO add support for other branch types)
                      endcase
@@ -191,7 +191,7 @@ module cpu_control_unit (
    assign alu_op_sel = alu_dec_result;
 
    //==========================
-   // SIGN-EXT DEC
+   // SIGN-EXT DEC //TODO Extend for U type operations
    //==========================
    always_comb begin
       sign_ext_dec_result = '0;
