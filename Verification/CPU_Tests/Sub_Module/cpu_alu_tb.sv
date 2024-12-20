@@ -5,6 +5,8 @@
 
 module cpu_alu_tb ();
 
+   import pkg_verification_utils::*;
+
    cpu_alu #(
       .DATA_WIDTH(32)
    ) dut(
@@ -16,8 +18,6 @@ module cpu_alu_tb ();
       .z_flag  ( alu_z_flag ),
       .alu_out ( alu_out    )
    );
-
-   typedef enum bit [2:0] { ADD = 3'b000, SUB = 3'b001, AND = 3'b010, OR = 3'b011, SLT = 3'b101} alu_opcode_t;
 
    logic [31:0]   tb_in_a;
    logic [31:0]   tb_in_b;

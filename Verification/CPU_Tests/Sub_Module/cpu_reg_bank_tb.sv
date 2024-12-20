@@ -413,22 +413,22 @@ module cpu_reg_bank_tb ();
       $display("//|                       Reset Test Start                       |//");
       $display("//+--------------------------------------------------------------+//");
       test_sequence.reset_test();
-//TODO Calculate passrate
+
       $display("//+--------------------------------------------------------------+//");
       $display("//|                     Bit Bash Test Start                      |//");
       $display("//+--------------------------------------------------------------+//");
       test_sequence.bit_bash_test();
-//TODO Calculate passrate
+
       $display("//+--------------------------------------------------------------+//");
       $display("//|                Write one Read all Test Start                 |//");
       $display("//+--------------------------------------------------------------+//");
       test_sequence.write_read_all_test();
-//TODO Calculate passrate
+
       $display("//+--------------------------------------------------------------+//");
       $display("//|                    Write-Read Test Start                     |//");
       $display("//+--------------------------------------------------------------+//");
       test_sequence.write_read_test();
-//TODO Calculate passrate
+
       $display("Stopping simulation.");
       $finish;
    end

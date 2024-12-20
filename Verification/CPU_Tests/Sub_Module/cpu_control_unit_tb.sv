@@ -5,6 +5,8 @@
 
 module cpu_control_unit_tb ();
 
+   import pkg_verification_utils::*;
+
    cpu_control_unit dut(
       //    Input ports
       .clk           ( tb_clk           ),
@@ -25,24 +27,6 @@ module cpu_control_unit_tb ();
       .alu_op_sel    ( dut_alu_op_sel   ),
       .result_src    ( dut_result_src   ) 
    );
-
-   //User Defined Data Types
-
-   typedef enum bit [6:0] { //These instruction opcodes represents the RV32I set
-      LOAD     = 7'b0000011,
-      I_TYPE   = 7'b0010011,
-      AUI_PC   = 7'b0010111,
-      S_TYPE   = 7'b0100011,
-      R_TYPE   = 7'b0110011,
-      LUI      = 7'b0110111,
-      B_TYPE   = 7'b1100011,
-      JALR     = 7'b1100111,
-      J_TYPE   = 7'b1101111
-   } cpu_opcode_t;
-
-   typedef enum bit [2:0] {FETCH,DECODE,EXECUTE,MEM_ACC,RFL_WRB} cpu_state_t;
-
-   typedef enum bit [2:0] { ADD = 3'b000, SUB = 3'b001, AND = 3'b010, OR = 3'b011, SLT = 3'b101} alu_opcode_t;
 
    //DUT Inputs
    bit            tb_clk;
