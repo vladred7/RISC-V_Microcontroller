@@ -1,3 +1,8 @@
+//######################################## Header ########################################
+//# Author: Vlad Rosu                                                                    #
+//# Description: A parameterizable program counter module                                #
+//########################################################################################
+
 module cpu_program_counter  #(
    parameter ADDR_WIDTH = 32
 )(

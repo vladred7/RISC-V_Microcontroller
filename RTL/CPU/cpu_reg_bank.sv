@@ -1,3 +1,8 @@
+//######################################## Header ########################################
+//# Author: Vlad Rosu                                                                    #
+//# Description: Parameterizable register file specific for an RISCV arhitecture         #
+//########################################################################################
+
 module cpu_reg_bank #(
    parameter ADDR_WIDTH = 5,
    parameter DATA_WIDTH = 32

@@ -1,3 +1,9 @@
+//######################################## Header ########################################
+//# Author: Vlad Rosu                                                                    #
+//# Description: Top file for the multicycle CPU aka v1, containing all non arhitectural #
+//#              register and all the connections between the modules                    #
+//########################################################################################
+
 module cpu_v1 #(
    parameter ADDR_WIDTH          = 32,
    parameter DATA_WIDTH          = 32,
@@ -5,7 +11,7 @@ module cpu_v1 #(
 )(
 	input sys_clk,
    input sys_rst_n
-	
+	//TODO add all port iterface
 );
 
    //==========================

@@ -1,3 +1,8 @@
+//######################################## Header ########################################
+//# Author: Vlad Rosu                                                                    #
+//# Description: This package contains UDTs used CPU design                              #
+//########################################################################################
+
 package pkg_cpu_typedefs;
 
    typedef enum bit [2:0] {

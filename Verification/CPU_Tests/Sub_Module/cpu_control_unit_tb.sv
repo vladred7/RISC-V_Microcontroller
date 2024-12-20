@@ -1,3 +1,8 @@
+//######################################## Header ########################################
+//# Author: Vlad Rosu                                                                    #
+//# Description: Testbench for control unit of the multicycle CPU aka v1                 #
+//########################################################################################
+
 module cpu_control_unit_tb ();
 
    cpu_control_unit dut(

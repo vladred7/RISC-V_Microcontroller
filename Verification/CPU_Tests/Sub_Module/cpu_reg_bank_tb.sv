@@ -1,3 +1,9 @@
+//######################################## Header ########################################
+//# Author: Vlad Rosu                                                                    #
+//# Description: Testbench for register file containing 32 registers specialized on      #
+//#              32 bit data                                                             #
+//########################################################################################
+
 module cpu_reg_bank_tb ();
 
    //Packages and libraries

@@ -1,3 +1,8 @@
+//######################################## Header ########################################
+//# Author: Vlad Rosu                                                                    #
+//# Description: Parameterizable sign extend unit specific for a RISCV instruction set   #
+//########################################################################################
+
 module cpu_sign_extend_unit #(
    parameter DATA_WIDTH = 32
 )(   

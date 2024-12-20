@@ -1,3 +1,9 @@
+//######################################## Header ########################################
+//# Author: Vlad Rosu                                                                    #
+//# Description: This package contains UDTs, Classes, Functions, Taks used in the        #
+//#              verification process                                                    #
+//########################################################################################
+
 package pkg_verification_utils;
 
    //+--------------------------------------------------------------+//

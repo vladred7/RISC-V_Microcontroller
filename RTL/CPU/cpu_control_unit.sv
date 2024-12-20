@@ -1,3 +1,8 @@
+//######################################## Header ########################################
+//# Author: Vlad Rosu                                                                    #
+//# Description: Control unit used for multi cycle CPU                                   #
+//########################################################################################
+
 module cpu_control_unit (
    //    Input ports definition
    input        clk,
