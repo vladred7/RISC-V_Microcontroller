@@ -12,6 +12,18 @@ package pkg_cpu_typedefs;
       OR    = 3'b011,
       SLT   = 3'b101
    } alu_opcode_t;
+   
+   typedef enum bit [6:0] { //These instruction opcodes represents the RV32I set
+      LOAD     = 7'b0000011,
+      I_TYPE   = 7'b0010011,
+      AUI_PC   = 7'b0010111,
+      S_TYPE   = 7'b0100011,
+      R_TYPE   = 7'b0110011,
+      LUI      = 7'b0110111,
+      B_TYPE   = 7'b1100011,
+      JALR     = 7'b1100111,
+      J_TYPE   = 7'b1101111
+   } cpu_opcode_t;
 
    typedef enum bit [4:0] {
       ZERO  = 'd0,   // Constant Value of 0
@@ -49,12 +61,12 @@ package pkg_cpu_typedefs;
    } cpu_regset_t;
 
    typedef struct packed {
-      logic [6:0] funct7;  //bits [31:25] of the instruction
-      logic [4:0] rs2;     //bits [24:20] of the instruction
-      logic [4:0] rs1;     //bits [19:15] of the instruction
-      logic [2:0] funct3;  //bits [14:12] of the instruction
-      logic [4:0] rd;      //bits [11: 7] of the instruction
-      logic [6:0] opc;     //bits [ 6: 0] of the instruction
+      logic [6:0]  funct7;  //bits [31:25] of the instruction
+      cpu_regset_t rs2;     //bits [24:20] of the instruction
+      cpu_regset_t rs1;     //bits [19:15] of the instruction
+      logic [2:0]  funct3;  //bits [14:12] of the instruction
+      cpu_regset_t rd;      //bits [11: 7] of the instruction
+      cpu_opcode_t opc;     //bits [ 6: 0] of the instruction
    } instr_t;
 
    typedef struct packed {
@@ -74,17 +86,5 @@ package pkg_cpu_typedefs;
       MEM_ACC     = 'd3, //Memory stage - read/write to the memory
       RFL_WRB     = 'd4  //Write Back stage - write the register file if needed
    } cpu_state_t;
-
-   typedef enum bit [6:0] { //These instruction opcodes represents the RV32I set
-      LOAD     = 7'b0000011,
-      I_TYPE   = 7'b0010011,
-      AUI_PC   = 7'b0010111,
-      S_TYPE   = 7'b0100011,
-      R_TYPE   = 7'b0110011,
-      LUI      = 7'b0110111,
-      B_TYPE   = 7'b1100011,
-      JALR     = 7'b1100111,
-      J_TYPE   = 7'b1101111
-   } cpu_opcode_t;
 
 endpackage : pkg_cpu_typedefs

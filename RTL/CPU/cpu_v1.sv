@@ -9,9 +9,14 @@ module cpu_v1 #(
    parameter DATA_WIDTH          = 32,
    parameter REG_FILE_ADDR_WIDTH = 5
 )(
-	input sys_clk,
-   input sys_rst_n
-	//TODO add all port iterface
+   //    Input ports definition
+	input                   sys_clk,
+   input                   sys_rst_n,
+   input  [DATA_WIDTH-1:0] mem_data_out,
+	//    Output ports definition
+   output                  mem_wr_en,
+   output [ADDR_WIDTH-1:0] mem_addr,
+   output [DATA_WIDTH-1:0] mem_data_in
 );
 
    //==========================
@@ -26,11 +31,11 @@ module cpu_v1 #(
    logic [ADDR_WIDTH-1:0] pc_next;
    logic [ADDR_WIDTH-1:0] pc_prev;
    logic                  pc_wr_en;
-   logic [ADDR_WIDTH-1:0] mem_addr;
-   logic [DATA_WIDTH-1:0] mem_data_out;
-   logic [DATA_WIDTH-1:0] mem_data_in;
+   //logic [ADDR_WIDTH-1:0] mem_addr;
+   //logic [DATA_WIDTH-1:0] mem_data_out;
+   //logic [DATA_WIDTH-1:0] mem_data_in;
    logic                  mem_addr_src;
-   logic                  mem_wr_en;
+   //logic                  mem_wr_en;
    logic                  instr_wr_en;
    instr_reg_t            instr;
    logic [DATA_WIDTH-1:0] data;
@@ -82,7 +87,7 @@ module cpu_v1 #(
    always_ff @(posedge sys_clk or negedge sys_rst_n) begin
       if(!sys_rst_n) begin
          pc_prev_ff <= '0;
-      end else begin //FIXME : Do i need to capture this only in FETCH? might need to add the instr_wr_en here too!
+      end else if(instr_wr_en) begin //Write the pc only in fetch stage to avoid losing it in other stages
          pc_prev_ff <= pc;
       end
    end
@@ -90,28 +95,28 @@ module cpu_v1 #(
    assign pc_prev = pc_prev_ff;
 
    //==========================
-   // Memory Logic - TODO move this logic on the chip level hierarchy
+   // Memory Logic
    //==========================
    assign mem_addr = (mem_addr_src) ? result : pc;
    assign mem_data_in = data_b;
 
-   nvm_mem #(
-      .MEM_ADDR_WIDTH(ADDR_WIDTH),
-      .MEM_DATA_WIDTH(DATA_WIDTH)
-   ) memory(
-      //    Input ports
-      .clk           ( sys_clk                     ),
-      .we            ( mem_wr_en                   ),
-      .addr          ( mem_addr                    ),
-      .wd            ( mem_data_in                 ),
-      //    Output ports
-      .rd            ( mem_data_out                )
-   );
+   // nvm_mem #(
+   //    .MEM_ADDR_WIDTH(ADDR_WIDTH),
+   //    .MEM_DATA_WIDTH(DATA_WIDTH)
+   // ) memory(
+   //    //    Input ports
+   //    .clk           ( sys_clk                     ),
+   //    .we            ( mem_wr_en                   ),
+   //    .addr          ( mem_addr                    ),
+   //    .wd            ( mem_data_in                 ),
+   //    //    Output ports
+   //    .rd            ( mem_data_out                )
+   // );
 
    always_ff @(posedge sys_clk or negedge sys_rst_n) begin
       if(!sys_rst_n) begin
          instr_ff <= '0;
-      end else begin
+      end else if(instr_wr_en) begin
          instr_ff <= mem_data_out;
       end
    end
