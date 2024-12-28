@@ -97,7 +97,6 @@ module cpu_reg_bank_tb ();
          errors = 0;
       endfunction : report_passrate
 
-      //This function return 64 bits because return both register values with rd1 as the LSW
       task read_seq(bit [4:0] addr1, bit [4:0] addr2);
          //Put the addresses on the DUT input
          cb.tb_addr1 <= addr1;
@@ -224,7 +223,7 @@ module cpu_reg_bank_tb ();
             //Write the data
             fork
                begin //DUT Write
-                  write_seq(reg_idx_write, data); //write one location with its index
+                  write_seq(reg_idx_write, data);
                end
                begin //Model Write
                   reg_file.write_register_file(reg_idx_write, data);

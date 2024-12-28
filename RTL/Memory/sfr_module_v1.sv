@@ -6,23 +6,27 @@
 //########################################################################################
 
 module sfr_module_v1 #(
+   //TODO This can have a reset value mask parameter if any of the field will need this feature
+   parameter SFR_ADDR_WIDTH         = 32,
    parameter SFR_WIDTH              = 32,
+   parameter SFR_ADDRESS            = 0,
    parameter IMPLEMENTED_BITS_MASK  = 0,
    parameter READABLE_BITS_MASK     = 0,
    parameter SW_UPDATABLE_BITS_MASK = 0,
    parameter HW_UPDATABLE_BITS_MASK = 0
 )(
    //    Input ports definition
-   input                   sys_clk,
-   input                   sys_clk_en,
-   input                   sys_rst_n,
-   input                   sfr_wen,          //SW write enable
-   input  [SFR_WIDTH-1:0]  sfr_hw_upate,     //HW write enable for specific bit
-   input  [SFR_WIDTH-1:0]  sfr_hw_value,     //HW write value for specific bits
-   input  [SFR_WIDTH-1:0]  sfr_sw_value,     //SW write value
+   input                         sys_clk,
+   input                         sys_clk_en,
+   input                         sys_rst_n,
+   input  [SFR_ADDR_WIDTH-1:0]   sys_addr,         //Address bus from CPU
+   input                         sys_wr_en,        //Write enable from CPU
+   input  [SFR_WIDTH-1:0]        sfr_hw_upate,     //HW write enable for specific bit
+   input  [SFR_WIDTH-1:0]        sfr_hw_value,     //HW write value for specific bits
+   input  [SFR_WIDTH-1:0]        sfr_sw_value,     //SW write value
    //    Output ports definition
-   output [SFR_WIDTH-1:0]  sfr_dout,
-   output [SFR_WIDTH-1:0]  sfr_rdonly_dout
+   output [SFR_WIDTH-1:0]        sfr_dout,
+   output [SFR_WIDTH-1:0]        sfr_rdonly_dout
 );
 
    //==========================
@@ -32,6 +36,8 @@ module sfr_module_v1 #(
    logic [SFR_WIDTH-1:0]   sfr_value_ff;
    logic [SFR_WIDTH-1:0]   hw_up;
    logic [SFR_WIDTH-1:0]   sfr_din;
+   logic                   sfr_wen;
+   logic [SFR_WIDTH-1:0]   sw_up;
 
    //==========================
    // Flip-flop declarations
@@ -50,13 +56,19 @@ module sfr_module_v1 #(
    // SFR Logic
    //==========================
 
+   //rden signal is generated based on the address of the SFR (specified as a parameter) in the register map
+   assign sfr_rden = (sys_addr == SFR_ADDRESS);
+   //wen signal is generated based rden and the wr_en from CPU
+   assign sfr_wen = sfr_rden & sys_wr_en;
+
    //Hardware has priority over software for write operations
    always_comb begin
       hw_up = (sfr_hw_upate & HW_UPDATABLE_BITS_MASK);
+      sw_up = SW_UPDATABLE_BITS_MASK;
       for (int i = 0; i < SFR_WIDTH; i++) begin
-         sfr_din[i] = (hw_up[i]) ? sfr_hw_value[i]:
-                      ( sfr_wen) ? sfr_sw_value[i]:
-                                   sfr_value_ff[i];
+         sfr_din[i] = (          hw_up[i]) ? sfr_hw_value[i]:
+                      (sw_up[i] & sfr_wen) ? sfr_sw_value[i]:
+                                             sfr_value_ff[i];
       end
    end
    
@@ -64,12 +76,13 @@ module sfr_module_v1 #(
       if(!sys_rst_n) begin
          sfr_value_ff <= '0;
       end else begin
-         sfr_value_ff <= sfr_din;
+         sfr_value_ff <= sfr_din & IMPLEMENTED_BITS_MASK;
       end
    end
 
-   assign sfr_dout = sfr_value_ff;
-   assign sfr_rdonly_dout = sfr_value_ff & READABLE_BITS_MASK;
+   //All SFR outputs will be gated by enable because in the register map they will be ored together
+   assign sfr_dout = (sfr_rden) ? sfr_value_ff : '0;
+   assign sfr_rdonly_dout = (sfr_rden) ? (sfr_value_ff & READABLE_BITS_MASK) : '0;
 
    //==========================
    // Spec Assertions
