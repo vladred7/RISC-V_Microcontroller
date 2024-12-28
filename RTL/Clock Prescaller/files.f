@@ -1,10 +1,6 @@
 //######################################## Header ########################################
 //# Author: Vlad Rosu                                                                    #
-//# Description: List containing the order of compilation for the Memory modules         #
+//# Description: List containing the order of compilation for the prescaller module      #
 //########################################################################################
 
-pkg_sfrs_definition.sv
-
-nvm_mem.sv
-sfr_module_v1.sv
-sfr_map.sv
+clk_prescaller_v1.sv
