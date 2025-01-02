@@ -1,9 +1,9 @@
 //######################################## Header ########################################
 //# Author: Vlad Rosu                                                                    #
-//# Description: Control unit used for multi cycle CPU                                   #
+//# Description: Control unit used for multicycle CPU                                    #
 //########################################################################################
 
-module cpu_control_unit (
+module cpu_control_unit_v1(
    //    Input ports definition
    input        clk,
    input        rst_n,
@@ -217,4 +217,4 @@ module cpu_control_unit (
       //TODO add assertions
    `endif
 
-endmodule : cpu_control_unit
+endmodule : cpu_control_unit_v1

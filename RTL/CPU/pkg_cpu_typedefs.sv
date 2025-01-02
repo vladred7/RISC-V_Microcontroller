@@ -87,4 +87,60 @@ package pkg_cpu_typedefs;
       RFL_WRB     = 'd4  //Write Back stage - write the register file if needed
    } cpu_state_t;
 
+   //+--------------------------------------------------------------+//
+   //|                  Pipeline CPU Specific UDTs                  |//
+   //+--------------------------------------------------------------+//
+
+   typedef struct packed {
+      instr_t      f_instr;         //instruction read from PFM
+      logic [31:0] f_pc_val;        //pc value
+      logic [31:0] f_pc_incr;       //incremented pc value
+   } fetch_data_path_t;
+
+   typedef struct packed {
+      logic [31:0] d_regfl_data_a;  //1st data from register file
+      logic [31:0] d_regfl_data_b;  //2nd data from register file
+      logic [31:0] d_pc_val;        //pc value from F stage
+      logic [31:0] d_pc_incr;       //incremented pc value from F stage
+      cpu_regset_t d_rs2;           //bits [24:20] of the instruction from F stage
+      cpu_regset_t d_rs1;           //bits [19:15] of the instruction from F stage
+      cpu_regset_t d_rd;            //bits [11: 7] of the instruction from F stage
+      logic [24:0] d_imd_data;      //bits [31: 7] of the instruction from F stage
+   } decode_data_path_t;
+
+   typedef struct packed {
+      logic        d_regfl_wr_en;
+      logic [ 1:0] d_result_src;
+      logic        d_mem_wr_en;
+      logic        d_jmp;
+      logic        d_bra;
+      logic [ 2:0] d_alu_op_sel;
+      logic [ 1:0] d_alu_b_src;
+   } decode_ctrl_path_t;
+
+   typedef struct packed {
+      logic [31:0] e_alu_result;    //flopped alu_result
+      logic [31:0] e_wr_data;       //data to be written to DFM
+      logic [31:0] e_pc_incr;       //incremented pc value from D stage
+      cpu_regset_t e_rd;            //bits [11: 7] of the instruction from D stage
+   } execute_data_path_t;
+
+   typedef struct packed {
+      logic        e_regfl_wr_en;
+      logic [ 1:0] e_result_src;
+      logic        e_mem_wr_en;
+   } execute_ctrl_path_t;
+
+   typedef struct packed {
+      logic [31:0] m_alu_result;    //flopped alu_result
+      logic [31:0] m_rd_data;       //data read from DFM
+      logic [31:0] m_pc_incr;       //incremented pc value from E stage
+      cpu_regset_t m_rd;            //bits [11: 7] of the instruction from E stage
+   } memory_data_path_t;
+
+   typedef struct packed {
+      logic        m_regfl_wr_en;
+      logic [ 1:0] m_result_src;
+   } memory_ctrl_path_t;
+
 endpackage : pkg_cpu_typedefs

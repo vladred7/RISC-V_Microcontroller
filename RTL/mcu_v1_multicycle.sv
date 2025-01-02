@@ -34,7 +34,7 @@ module mcu_v1_multicycle #(
    //==========================
    // CPU Instance
    //==========================
-   cpu_v1 #(
+   cpu_multicycle_v1 #(
       .ADDR_WIDTH(ADDR_BUS_WIDTH),
       .DATA_WIDTH(DATA_BUS_WIDTH),
       .REG_FILE_ADDR_WIDTH(CPU_REG_FILE_ADDR_WIDTH)

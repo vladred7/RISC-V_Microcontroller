@@ -4,7 +4,7 @@
 //#              register and all the connections between the modules                    #
 //########################################################################################
 
-module cpu_v1 #(
+module cpu_multicycle_v1 #(
    parameter ADDR_WIDTH          = 32,
    parameter DATA_WIDTH          = 32,
    parameter REG_FILE_ADDR_WIDTH = 5
@@ -136,14 +136,14 @@ module cpu_v1 #(
    //==========================
    // Control Unit FSM Logic
    //==========================
-   cpu_control_unit ctrl_unit(
+   cpu_control_unit_v1 ctrl_unit(
       //    Input ports
       .clk           ( sys_clk                     ),
       .rst_n         ( sys_rst_n                   ),
       .opc           ( instr.instruction.opc       ),
       .funct3        ( instr.instruction.funct3    ),
       .funct7        ( instr.instruction.funct7[5] ),
-      .z_flag        ( alu_z_flag ),
+      .z_flag        ( alu_z_flag                  ),
       //    Output ports 
       .pc_wr_en      ( pc_wr_en                    ),
       .mem_addr_src  ( mem_addr_src                ),
@@ -270,4 +270,4 @@ module cpu_v1 #(
       //TODO add assertions
    `endif
 
-endmodule : cpu_v1
+endmodule : cpu_multicycle_v1

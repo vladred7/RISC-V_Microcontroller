@@ -1,6 +1,6 @@
 //######################################## Header ########################################
 //# Author: Vlad Rosu                                                                    #
-//# Description: Tesetbench for cpu_v1 aka multicycle CPU                                #
+//# Description: Tesetbench for cpu_multicycle_v1 aka multicycle CPU                     #
 //########################################################################################
 
 module cpu_v1_tb ();
@@ -9,7 +9,7 @@ module cpu_v1_tb ();
    import pkg_verification_utils::*;
    
    //Instantiate the DUT
-   cpu_v1 #(
+   cpu_multicycle_v1 #(
       .ADDR_WIDTH(32),
       .DATA_WIDTH(32),
       .REG_FILE_ADDR_WIDTH( 5)

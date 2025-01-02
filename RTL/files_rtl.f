@@ -16,7 +16,7 @@
 //      |             +--cpu_alu.sv
 //      |             +--cpu_sign_extend_unit.sv
 //      |             +--cpu_program_counter.sv
-//      |             +--cpu_v1.sv
+//      |             +--cpu_multicycle_v1.sv
 //      |
 //      +--Clk_presc--+--clk_prescaller_v1.sv
 //      |
