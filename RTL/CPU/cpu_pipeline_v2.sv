@@ -29,26 +29,57 @@ module cpu_pipeline_v2 #(
    //==========================
    // Wire declarations
    //==========================
-   fetch_data_path_t    f_stage;          //pipeline data path for Fetch stage
-   decode_data_path_t   d_stage;          //pipeline data path for Decode stage
-   execute_data_path_t  e_stage;          //pipeline data path for Execute stage
-   memory_data_path_t   m_stage;          //pipeline data path for Memory stage
-   decode_ctrl_path_t   d_ctrl_stage;     //pipeline control path for Decode stage
-   execute_ctrl_path_t  e_ctrl_stage;     //pipeline control path for Execute stage
-   memory_ctrl_path_t   m_ctrl_stage;     //pipeline control path for Memory stage
-   logic                pc_in_src;        //pc input mux selection
-   logic                alu_z_flag;       //alu zero flag
+   fetch_data_path_t       f_stage;          //pipeline data path for Fetch stage
+   decode_data_path_t      d_stage;          //pipeline data path for Decode stage
+   execute_data_path_t     e_stage;          //pipeline data path for Execute stage
+   memory_data_path_t      m_stage;          //pipeline data path for Memory stage
+   wrback_data_path_t      w_stage;          //pipeline data path for Write Back stage
+   execute_ctrl_path_t     e_ctrl_stage;     //pipeline control path for Execute stage
+   memory_ctrl_path_t      m_ctrl_stage;     //pipeline control path for Memory stage
+   wrback_ctrl_path_t      w_ctrl_stage;     //pipeline control path for Write Back stage
+   logic                   f_stall;
+   logic                   d_stall;
+   logic                   d_flush;
+   logic                   e_flush;
+   logic            [1:0]  e_fwd_src_a;
+   logic            [1:0]  e_fwd_src_b;
+
+   instr_t                 f_instr;
+   logic [ADDR_WIDTH-1:0]  f_pc_next;
+   logic                   d_regfl_wr_en;
+   logic            [1:0]  d_result_src;
+   logic                   d_mem_wr_en;
+   logic                   d_jmp;
+   logic                   d_bra;
+   logic            [2:0]  d_alu_op_sel;
+   logic                   d_alu_b_src;
+   logic            [1:0]  d_imd_src;
+   logic [DATA_WIDTH-1:0]  d_imd_ext_data;
+   logic [DATA_WIDTH-1:0]  d_regfl_data_a;
+   logic [DATA_WIDTH-1:0]  d_regfl_data_b;
+   logic [DATA_WIDTH-1:0]  e_fwd_a_mux_out;
+   logic [DATA_WIDTH-1:0]  e_fwd_b_mux_out;
+   logic [DATA_WIDTH-1:0]  e_alu_in_a;
+   logic [DATA_WIDTH-1:0]  e_alu_in_b;
+   logic                   e_alu_z_flag;
+   logic [DATA_WIDTH-1:0]  e_alu_out;
+   logic [ADDR_WIDTH-1:0]  e_pc_target_addr;
+   logic                   e_pc_in_src;      //pc input mux selection
+   logic [DATA_WIDTH-1:0]  m_rd_data;
+   logic [DATA_WIDTH-1:0]  w_result;         //result mux output
+
 
    //==========================
    // Flip-flop declarations
    //==========================
-   fetch_data_path_t    f_stage_ff;       //pipeline data path flip flop for Fetch stage
-   decode_data_path_t   d_stage_ff;       //pipeline data path flip flop for Decode stage
-   execute_data_path_t  e_stage_ff;       //pipeline data path flip flop for Execute stage
-   memory_data_path_t   m_stage_ff;       //pipeline data path flip flop for Memory stage
-   decode_ctrl_path_t   d_ctrl_stage_ff;  //pipeline control path flip flop for Decode stage
-   execute_ctrl_path_t  e_ctrl_stage_ff;  //pipeline control path flip flop for Execute stage
-   memory_ctrl_path_t   m_ctrl_stage_ff;  //pipeline control path flip flop for Memory stage
+   fetch_data_path_t       f_stage_ff;       //pipeline data path flip flop for Fetch stage
+   decode_data_path_t      d_stage_ff;       //pipeline data path flip flop for Decode stage
+   execute_data_path_t     e_stage_ff;       //pipeline data path flip flop for Execute stage
+   memory_data_path_t      m_stage_ff;       //pipeline data path flip flop for Memory stage
+   wrback_data_path_t      w_stage_ff;       //pipeline data path flip flop for Write Back stage
+   execute_ctrl_path_t     e_ctrl_stage_ff;  //pipeline control path flip flop for Execute stage
+   memory_ctrl_path_t      m_ctrl_stage_ff;  //pipeline control path flip flop for Memory stage
+   wrback_ctrl_path_t      w_ctrl_stage_ff;  //pipeline control path flip flop for Write Back stage
 
    //+--------------------------------------------------------------+//
    //|                      CPU Control System                      |//
@@ -59,69 +90,93 @@ module cpu_pipeline_v2 #(
    //==========================
    cpu_control_unit_v2 ctrl_unit(
       //    Input ports
-      .opc           ( f_stage.f_instr.opc         ),
-      .funct3        ( f_stage.f_instr.funct3      ),
-      .funct7        ( f_stage.f_instr.funct7[5]   ),
+      .opc           ( d_stage.d_instr.instruction.opc         ),
+      .funct3        ( d_stage.d_instr.instruction.funct3      ),
+      .funct7        ( d_stage.d_instr.instruction.funct7[5]   ),
       //    Output ports 
-      .regfl_wr_en   ( regfl_wr_en                 ),
-      .result_src    ( result_src                  ),
-      .mem_wr_en     ( mem_wr_en                   ),
-      .jmp           ( jmp                         ),
-      .bra           ( bra                         ),
-      .alu_op_sel    ( alu_op_sel                  ),
-      .alu_b_src     ( alu_b_src                   ),
-      .imd_src       ( imd_src                     )
+      .regfl_wr_en   ( d_regfl_wr_en                           ),
+      .result_src    ( d_result_src                            ),
+      .mem_wr_en     ( d_mem_wr_en                             ),
+      .jmp           ( d_jmp                                   ),
+      .bra           ( d_bra                                   ),
+      .alu_op_sel    ( d_alu_op_sel                            ),
+      .alu_b_src     ( d_alu_b_src                             ),
+      .imd_src       ( d_imd_src                               )
    );
-
-   //TODO add hazard clear and reset to the flops
-
-   //Decode Stage
-   always_ff @(posedge sys_clk or negedge sys_rst_n) begin
-      if(!sys_rst_n) begin
-         d_ctrl_stage_ff <= '0;
-      end else begin
-         d_ctrl_stage_ff.d_regfl_wr_en <= regfl_wr_en;
-         d_ctrl_stage_ff.d_result_src  <= result_src;
-         d_ctrl_stage_ff.d_mem_wr_en   <= mem_wr_en;
-         d_ctrl_stage_ff.d_jmp         <= jmp;
-         d_ctrl_stage_ff.d_bra         <= bra;
-         d_ctrl_stage_ff.d_alu_op_sel  <= alu_op_sel;
-         d_ctrl_stage_ff.d_alu_b_src   <= alu_b_src;
-      end
-   end
-
-   assign d_ctrl_stage = d_ctrl_stage_ff;
 
    //Execute Stage
    always_ff @(posedge sys_clk or negedge sys_rst_n) begin
-      if(!sys_rst_n) begin
+      if(!sys_rst_n) begin //async reset active low
          e_ctrl_stage_ff <= '0;
       end else begin
-         e_ctrl_stage_ff.d_regfl_wr_en <= d_ctrl_stage.regfl_wr_en;
-         e_ctrl_stage_ff.d_result_src  <= d_ctrl_stage.result_src;
-         e_ctrl_stage_ff.d_mem_wr_en   <= d_ctrl_stage.mem_wr_en;
+         if(e_flush) begin //sync reset when flushed (active high)
+            e_ctrl_stage_ff <= '0;
+         end else begin
+            e_ctrl_stage_ff.e_regfl_wr_en <= d_regfl_wr_en;
+            e_ctrl_stage_ff.e_result_src  <= d_result_src;
+            e_ctrl_stage_ff.e_mem_wr_en   <= d_mem_wr_en;
+            e_ctrl_stage_ff.e_jmp         <= d_jmp;
+            e_ctrl_stage_ff.e_bra         <= d_bra;
+            e_ctrl_stage_ff.e_alu_op_sel  <= d_alu_op_sel;
+            e_ctrl_stage_ff.e_alu_b_src   <= d_alu_b_src;
+         end
       end
    end
 
    assign e_ctrl_stage = e_ctrl_stage_ff;
-
-   assign pc_in_src = d_ctrl_stage.d_jmp | (d_ctrl_stage.d_bra & alu_z_flag);
 
    //Memory Stage
    always_ff @(posedge sys_clk or negedge sys_rst_n) begin
       if(!sys_rst_n) begin
          m_ctrl_stage_ff <= '0;
       end else begin
-         m_ctrl_stage_ff.d_regfl_wr_en <= e_ctrl_stage.regfl_wr_en;
-         m_ctrl_stage_ff.d_result_src  <= e_ctrl_stage.result_src;
+         m_ctrl_stage_ff.m_regfl_wr_en <= e_ctrl_stage.e_regfl_wr_en;
+         m_ctrl_stage_ff.m_result_src  <= e_ctrl_stage.e_result_src;
+         m_ctrl_stage_ff.m_mem_wr_en   <= e_ctrl_stage.e_mem_wr_en;
       end
    end
 
    assign m_ctrl_stage = m_ctrl_stage_ff;
+   //Control signal for Program Counter in case of jump/branch
+   assign e_pc_in_src = e_ctrl_stage.e_jmp | (e_ctrl_stage.e_bra & e_alu_z_flag);
+
+   //Write Back Stage
+   always_ff @(posedge sys_clk or negedge sys_rst_n) begin
+      if(!sys_rst_n) begin
+         w_ctrl_stage_ff <= '0;
+      end else begin
+         w_ctrl_stage_ff.w_regfl_wr_en <= m_ctrl_stage.m_regfl_wr_en;
+         w_ctrl_stage_ff.w_result_src  <= m_ctrl_stage.m_result_src;
+      end
+   end
+
+   assign w_ctrl_stage = w_ctrl_stage_ff;
 
    //==========================
    // Hazard Unit Logic
    //==========================
+   cpu_hazard_unit hazard_unit(
+      //    Input ports definition
+      .pc_src        ( e_pc_in_src                             ),
+      .d_reg_src1    ( d_stage.d_instr.instruction.rs1         ),
+      .d_reg_src2    ( d_stage.d_instr.instruction.rs2         ),
+      .e_reg_src1    ( e_stage.e_rs1                           ),
+      .e_reg_src2    ( e_stage.e_rs2                           ),
+      .e_reg_dest    ( e_stage.e_rd                            ),
+      .e_rslt_src_0  ( e_ctrl_stage.e_result_src[0]            ),
+      .m_reg_dest    ( m_stage.m_rd                            ),
+      .m_regfl_wr_en ( m_ctrl_stage.m_regfl_wr_en              ),
+      .w_reg_dest    ( w_stage.w_rd                            ),
+      .w_regfl_wr_en ( w_ctrl_stage.w_regfl_wr_en              ),
+      //    Output ports definition
+      .f_stall       ( f_stall                                 ),
+      .d_stall       ( d_stall                                 ),
+      .d_flush       ( d_flush                                 ),
+      .e_flush       ( e_flush                                 ),
+      .e_fwd_src_a   ( e_fwd_src_a                             ),
+      .e_fwd_src_b   ( e_fwd_src_b                             )
+   );
+
 
    //+--------------------------------------------------------------+//
    //|                          Fetch Stage                         |//
@@ -130,58 +185,75 @@ module cpu_pipeline_v2 #(
    //==========================
    // Program Counter Logic
    //==========================
-   assign pc_next = pc_in_src ? /*in1*/ : /*in0*/; //TODO
+   assign f_pc_next = e_pc_in_src ? e_pc_target_addr : (f_stage.f_pc_val + 4);
 
-   cpu_program_counter #(
-      .ADDR_WIDTH(ADDR_WIDTH)
-   ) program_counter(
-      //    Input ports
-      .clk           ( sys_clk                     ),
-      .rst_n         ( sys_rst_n                   ),
-      .ld            ( pc_wr_en                    ),
-      .pc_in         ( pc_next                     ),
-      //    Output ports
-      .pc_out        ( pc                          )
-   );
+   //==========================
+   // Fetch Stage Flop
+   //==========================
+   always_ff @(posedge sys_clk or negedge sys_rst_n) begin
+      if(!sys_rst_n) begin
+         f_stage_ff <= '0;
+      end else begin
+         if(!f_stall) begin
+            f_stage_ff.f_pc_val <= f_pc_next;
+         end
+      end
+   end
+
+   assign f_stage = f_stage_ff;
 
    //==========================
    // PFM Logic
    //==========================
+   assign pfm_req_addr  = f_stage.f_pc_val;
+   assign f_instr       = pfm_rd_instr;
 
-   //TODO Memory is now 2 blocks
-
-
-   
 
    //+--------------------------------------------------------------+//
    //|                         Decode Stage                         |//
    //+--------------------------------------------------------------+//
 
    //==========================
+   // Decode Stage Flop
+   //==========================
+   always_ff @(posedge sys_clk or negedge sys_rst_n) begin
+      if(!sys_rst_n) begin //async reset active low
+         d_stage_ff <= '0;
+      end else begin
+         if(d_flush) begin //sync reset when flushed (active high)
+            d_stage_ff <= '0;
+         end else if(!d_stall) begin //enable active low
+            d_stage_ff.d_instr   <= f_instr; //FIXME need d_instr.instruction? Probably not
+            d_stage_ff.d_pc_val  <= f_stage.f_pc_val;
+            d_stage_ff.d_pc_incr <= f_pc_next;
+         end
+      end
+   end
+
+   assign d_stage = d_stage_ff;
+
+   //==========================
    // Register File Logic
    //==========================
-   //TODO writes on negedge of sysclk (can write on a result in the first half of cycle and read in the second half) 
-   //TODO explicatie daca restul se face pe posedge cand scriu pe negedge voi avea datele imediat la urmatorul posedge ca sa evit hazardele
    cpu_reg_bank #(
       .ADDR_WIDTH(REG_FILE_ADDR_WIDTH),
       .DATA_WIDTH(DATA_WIDTH)
    ) reg_file(
       //    Input ports
-      .clk           ( sys_clk                     ),
-      .rst_n         ( sys_rst_n                   ),
-      .a1            ( instr.instruction.rs1       ),
-      .a2            ( instr.instruction.rs2       ),
-      .a3            ( instr.instruction.rd        ),
-      .wen3          ( regfl_wr_en                 ),
-      .wd3           ( result                      ),
+      //NOTE: Reg file write is done on the negedge of the clk because the rest of the logic executes on posedge
+      //      so when data is sampled on negedge will be available half a cycle later on the next posedge
+      .clk           ( !sys_clk                                ), //INVERTED SYS CLOCK!!!
+      .rst_n         ( sys_rst_n                               ),
+      .a1            ( d_stage.d_instr.instruction.rs1         ),
+      .a2            ( d_stage.d_instr.instruction.rs2         ),
+      .a3            ( w_stage.w_rd                            ),
+      .wen3          ( w_ctrl_stage.w_regfl_wr_en              ),
+      .wd3           ( w_result                                ),
       //    Output ports
-      .rd1           ( regfl_data_a                ),
-      .rd2           ( regfl_data_b                )
+      .rd1           ( d_regfl_data_a                          ),
+      .rd2           ( d_regfl_data_b                          )
    );
 
-   //TODO: signals to PFM
-
-   
    //==========================
    // Sign Extension Logic
    //==========================
@@ -189,10 +261,10 @@ module cpu_pipeline_v2 #(
       .DATA_WIDTH(DATA_WIDTH)
    ) sign_ext_unit(
       //    Input ports
-      .imd           ( instr.data.imd_data         ),
-      .imd_src       ( imd_src                     ),
+      .imd           ( d_stage.d_instr.data.imd_data           ),
+      .imd_src       ( d_imd_src                               ),
       //    Output ports
-      .imd_ext       ( imd_ext_data                )
+      .imd_ext       ( d_imd_ext_data                          )
    );
 
    //+--------------------------------------------------------------+//
@@ -200,40 +272,140 @@ module cpu_pipeline_v2 #(
    //+--------------------------------------------------------------+//
 
    //==========================
+   // Execute Stage Flop
+   //==========================
+   always_ff @(posedge sys_clk or negedge sys_rst_n) begin
+      if(!sys_rst_n) begin //async reset active low
+         e_stage_ff <= '0;
+      end else begin
+         if(e_flush) begin //sync reset when flushed (active high)
+            e_stage_ff <= '0;
+         end else begin
+            e_stage_ff.e_regfl_data_a  <= d_regfl_data_a;
+            e_stage_ff.e_regfl_data_b  <= d_regfl_data_b;
+            e_stage_ff.e_pc_val        <= d_stage.d_pc_val;
+            e_stage_ff.e_pc_incr       <= d_stage.d_pc_incr;
+            e_stage_ff.e_rs2           <= d_stage.d_instr.instruction.rs2;
+            e_stage_ff.e_rs1           <= d_stage.d_instr.instruction.rs1;
+            e_stage_ff.e_rd            <= d_stage.d_instr.instruction.rd;
+            e_stage_ff.e_imd_data      <= d_imd_ext_data;
+         end
+      end
+   end
+
+   assign e_stage = e_stage_ff;
+
+   //==========================
    // ALU Logic
    //==========================
+   //Data forward mux for ALU source A
+   always_comb begin
+      e_fwd_a_mux_out = '0;
+      case (e_fwd_src_a)
+         2'b00: e_fwd_a_mux_out = e_stage.e_regfl_data_a;  //no data forward needed
+         2'b01: e_fwd_a_mux_out = w_result;                //forword data from Write Back stage
+         2'b10: e_fwd_a_mux_out = m_stage.m_alu_result;    //forword data from Memory stage
+      endcase
+   end
+
+   assign e_alu_in_a = e_fwd_a_mux_out;
+   
+   //Data forward mux for ALU source B
+   always_comb begin
+      e_fwd_b_mux_out = '0;
+      case (e_fwd_src_b)
+         2'b00: e_fwd_b_mux_out = e_stage.e_regfl_data_b;  //no data forward needed
+         2'b01: e_fwd_b_mux_out = w_result;                //forword data from Write Back stage
+         2'b10: e_fwd_b_mux_out = m_stage.m_alu_result;    //forword data from Memory stage
+      endcase
+   end
+
+   //Select between mux out of src B and immediate data
+   always_comb begin
+      e_alu_in_b = '0;
+      case (e_ctrl_stage.e_alu_b_src)
+         1'b0: e_alu_in_b = e_fwd_b_mux_out;
+         1'b1: e_alu_in_b = e_stage.e_imd_data;
+      endcase
+   end
 
    cpu_alu #(
       .DATA_WIDTH(DATA_WIDTH)
    ) alu(
       //    Input ports
-      .in_a          ( alu_in_a                    ),
-      .in_b          ( alu_in_b                    ),
-      .op_sel        ( alu_op_sel                  ),
+      .in_a          ( e_alu_in_a                              ),
+      .in_b          ( e_alu_in_b                              ),
+      .op_sel        ( e_ctrl_stage.e_alu_op_sel               ),
       //    Output ports
-      .z_flag        ( alu_z_flag                  ),
-      .alu_out       ( alu_out                     )
+      .z_flag        ( e_alu_z_flag                            ),
+      .alu_out       ( e_alu_out                               )
    );
+
+   //Calculate the target address for jump/branch operations
+   assign e_pc_target_addr = e_stage.e_pc_val + e_stage.e_imd_data;
 
 
    //+--------------------------------------------------------------+//
    //|                         Memory Stage                         |//
    //+--------------------------------------------------------------+//
-   //TODO signals to DFM
+   
+   //==========================
+   // Memory Stage Flop
+   //==========================
+   always_ff @(posedge sys_clk or negedge sys_rst_n) begin
+      if(!sys_rst_n) begin //async reset active low
+         m_stage_ff <= '0;
+      end else begin
+         m_stage_ff.m_alu_result <= e_alu_out;
+         m_stage_ff.m_wr_data    <= e_fwd_b_mux_out;
+         m_stage_ff.m_pc_incr    <= e_stage.e_pc_incr;
+         m_stage_ff.m_rd         <= e_stage.e_rd;
+      end
+   end
+
    //==========================
    // DFM Logic
    //==========================
+   assign dfm_req_addr  = m_stage.m_alu_result;
+   assign dfm_wr_data   = m_stage.m_wr_data;
+   assign dfm_wr_en     = m_ctrl_stage.m_mem_wr_en;
+   assign m_rd_data     = dfm_rd_data;
 
 
    //+--------------------------------------------------------------+//
    //|                       Write Back Stage                       |//
    //+--------------------------------------------------------------+//
 
+   //==========================
+   // Write Back Stage Flop
+   //==========================
+   always_ff @(posedge sys_clk or negedge sys_rst_n) begin
+      if(!sys_rst_n) begin //async reset active low
+         w_stage_ff <= '0;
+      end else begin
+         w_stage_ff.w_alu_result <= m_stage.m_alu_result;
+         w_stage_ff.w_rd_data    <= m_rd_data;
+         w_stage_ff.w_pc_incr    <= m_stage.m_pc_incr;
+         w_stage_ff.w_rd         <= m_stage.m_rd;
+      end
+   end
+
+   assign w_stage = w_stage_ff;
+
+   //Result Mux
+   always_comb begin
+      w_result = '0;
+      case (w_ctrl_stage.w_result_src)
+         2'b00: w_result = w_stage.w_alu_result;
+         2'b01: w_result = w_stage.w_rd_data;
+         2'b10: w_result = w_stage.w_pc_incr;
+      endcase
+   end
 
 
-   //==========================
-   // Spec Assertions
-   //==========================
+   //+--------------------------------------------------------------+//
+   //|                        Spec Assertions                       |//
+   //+--------------------------------------------------------------+//
 
    `ifdef DESIGNER_ASSERTIONS
       //TODO add assertions
