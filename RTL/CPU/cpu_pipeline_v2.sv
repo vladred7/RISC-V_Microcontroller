@@ -94,14 +94,14 @@ module cpu_pipeline_v2 #(
       .funct3        ( d_stage.d_instr.instruction.funct3      ),
       .funct7        ( d_stage.d_instr.instruction.funct7[5]   ),
       //    Output ports 
-      .regfl_wr_en   ( d_regfl_wr_en                           ),
-      .result_src    ( d_result_src                            ),
-      .mem_wr_en     ( d_mem_wr_en                             ),
       .jmp           ( d_jmp                                   ),
       .bra           ( d_bra                                   ),
-      .alu_op_sel    ( d_alu_op_sel                            ),
       .alu_b_src     ( d_alu_b_src                             ),
-      .imd_src       ( d_imd_src                               )
+      .mem_wr_en     ( d_mem_wr_en                             ),
+      .regfl_wr_en   ( d_regfl_wr_en                           ),
+      .imd_src       ( d_imd_src                               ),
+      .alu_op_sel    ( d_alu_op_sel                            ),
+      .result_src    ( d_result_src                            )
    );
 
    //Execute Stage
@@ -242,6 +242,9 @@ module cpu_pipeline_v2 #(
       //    Input ports
       //NOTE: Reg file write is done on the negedge of the clk because the rest of the logic executes on posedge
       //      so when data is sampled on negedge will be available half a cycle later on the next posedge
+      //      This solves some potential RAW(read after write) hazards because when the data computed for an 
+      //      instruction pass the Write Back Stage, for sure it will be available half a cycle later for read
+      //      in the Decode Stage 
       .clk           ( !sys_clk                                ), //INVERTED SYS CLOCK!!!
       .rst_n         ( sys_rst_n                               ),
       .a1            ( d_stage.d_instr.instruction.rs1         ),

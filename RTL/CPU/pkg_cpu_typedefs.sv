@@ -119,7 +119,7 @@ package pkg_cpu_typedefs;
       logic        e_jmp;
       logic        e_bra;
       logic [ 2:0] e_alu_op_sel;
-      logic [ 1:0] e_alu_b_src;
+      logic        e_alu_b_src;
    } execute_ctrl_path_t;
 
    typedef struct packed {
