@@ -28,9 +28,8 @@ module cpu_control_unit_v2(
    // Wire declarations
    //==========================
    logic [ 1:0]   alu_op;
-   logic [11:0]   ctrl_vect;
+   logic [10:0]   ctrl_vect;
    logic [ 2:0]   alu_dec_result;
-   logic [ 1:0]   sign_ext_dec_result;
 
    //================================================//
    // CPU Decoder                                    //
@@ -63,14 +62,16 @@ module cpu_control_unit_v2(
    always_comb begin
       ctrl_vect = '0;
       case (opc)
-           LOAD: ctrl_vect = 12'b0_0_1_0_1_00_00_01;
-         S_TYPE: ctrl_vect = 12'b0_0_1_1_0_01_00_00;
-         R_TYPE: ctrl_vect = 12'b0_0_0_0_1_00_10_00;
-         I_TYPE: ctrl_vect = 12'b0_0_1_0_1_00_10_00;
-         J_TYPE: ctrl_vect = 12'b1_0_0_0_1_11_00_10;
-         B_TYPE: ctrl_vect = 12'b0_1_0_0_0_10_01_00;
+           LOAD: ctrl_vect = 11'b0_0_1_0_1_00_00_01;
+         S_TYPE: ctrl_vect = 11'b0_0_1_1_0_01_00_00;
+         R_TYPE: ctrl_vect = 11'b0_0_0_0_1_00_10_00;
+         I_TYPE: ctrl_vect = 11'b0_0_1_0_1_00_10_00;
+         J_TYPE: ctrl_vect = 11'b1_0_0_0_1_11_00_10;
+         B_TYPE: ctrl_vect = 11'b0_1_0_0_0_10_01_00;
       endcase
    end
+
+   assign {jmp, bra, alu_b_src, mem_wr_en, regfl_wr_en, imd_src, alu_op, result_src} = ctrl_vect;
 
    //=====================================================//
    // ALU DEC                                             //
@@ -106,23 +107,6 @@ module cpu_control_unit_v2(
    end
 
    assign alu_op_sel = alu_dec_result;
-
-   //==========================
-   // SIGN-EXT DEC //TODO Extend for U type operations
-   //==========================
-   always_comb begin
-      sign_ext_dec_result = '0;
-      case (opc)
-         LOAD,
-         I_TYPE,
-         JALR     : sign_ext_dec_result = 2'b00;
-         S_TYPE   : sign_ext_dec_result = 2'b01;
-         B_TYPE   : sign_ext_dec_result = 2'b10;
-         J_TYPE   : sign_ext_dec_result = 2'b11;
-      endcase
-   end
-
-   assign imd_src = sign_ext_dec_result;
 
 
    `ifdef DESIGNER_ASSERTIONS

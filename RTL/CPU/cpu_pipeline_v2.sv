@@ -366,6 +366,8 @@ module cpu_pipeline_v2 #(
       end
    end
 
+   assign m_stage = m_stage_ff;
+
    //==========================
    // DFM Logic
    //==========================
