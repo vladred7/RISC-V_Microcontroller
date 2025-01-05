@@ -1,0 +1,172 @@
+//######################################## Header ########################################
+//# Author: Vlad Rosu                                                                    #
+//# Description: Top module of the Timer n bit, this module will be used as a n bit      #
+//#              resolution timer with trigger and interrupt signal generation           #
+//########################################################################################
+
+module timer_nbit_v1 #(
+   parameter DATA_WIDTH = 32,
+   parameter N = 32
+)(
+   //    Input ports definition
+   input                      sys_clk,
+   input                      sys_clk_en,
+   input                      sys_rst_n,
+   input  [DATA_WIDTH-1:0]    tmr_ctrl,
+   input  [DATA_WIDTH-1:0]    tmr_val,
+   input  [DATA_WIDTH-1:0]    tmr_match_val0,
+   input  [DATA_WIDTH-1:0]    tmr_match_val1,
+   //    Output ports definition
+   output [DATA_WIDTH-1:0]    hw_up_tmr_ctrl,
+   output [DATA_WIDTH-1:0]    hw_up_tmr_val,
+   output [DATA_WIDTH-1:0]    hw_up_tmr_match_val0,
+   output [DATA_WIDTH-1:0]    hw_up_tmr_match_val1,
+   output [DATA_WIDTH-1:0]    hw_val_tmr_ctrl,
+   output [DATA_WIDTH-1:0]    hw_val_tmr_val,
+   output [DATA_WIDTH-1:0]    hw_val_tmr_match_val0,
+   output [DATA_WIDTH-1:0]    hw_val_tmr_match_val1,
+   output                     match0_event,     //TODO: should this be persistent?
+   output                     match1_event,     //TODO: should this be persistent?
+   output                     ovf_event         //TODO: should this be persistent?
+);
+
+   //==========================
+   // Packages and defines
+   //==========================
+   import pkg_sfrs_definition::*;
+   
+   //==========================
+   // Wire declarations
+   //==========================
+   tmr_ctrl_t           tmr_ctrl_reg;
+   tmr_val_t            tmr_val_reg;
+   tmr_match_val0_t     tmr_match_val0_reg;
+   tmr_match_val1_t     tmr_match_val1_reg;
+   tmr_ctrl_t           tmr_hw_up_ctrl;
+   tmr_val_t            tmr_hw_up_val;
+   tmr_match_val0_t     tmr_hw_up_match_val0;
+   tmr_match_val1_t     tmr_hw_up_match_val1;
+   tmr_ctrl_t           tmr_hw_val_ctrl;
+   tmr_val_t            tmr_hw_val_val;
+   tmr_match_val0_t     tmr_hw_val_match_val0;
+   tmr_match_val1_t     tmr_hw_val_match_val1;
+   logic                tmr_clk;
+   logic   [N:0]        tmr_value_comb;         //Timer value combo has 1 bit for OVF detection
+   logic [N-1:0]        tmr_value;
+   logic                count_en_comb;
+   logic                count_en;
+
+   //==========================
+   // Flip-flop declarations
+   //==========================
+   logic                sys_clk_en_sync;
+   logic [N-1:0]        tmr_value_ff;
+   logic                count_en_ff;
+
+//TODO CLOCK SELECTION LOGIC BASE ON clk src bits in SFR (should I do this logic on the top module?)
+   //==========================
+   // Input Clock Gate Logic
+   //==========================
+   //Gate the clock if chip low power mode is enabled or if the module is disabled
+   always_ff @(negedge sys_clk) sys_clk_en_sync <= sys_clk_en | tmr_ctrl_reg.on; //Sample clock enable on the negedge of the clock to avoid glitches
+   assign tmr_clk = sys_clk & sys_clk_en_sync;
+
+   //==========================
+   //Timer Logic
+   //==========================
+   assign tmr_ctrl_reg = tmr_ctrl;
+   assign tmr_val_reg = tmr_val;
+   assign tmr_match_val0_reg = tmr_match_val0;   
+   assign tmr_match_val1_reg = tmr_match_val1;
+
+   //Count enable signal logic
+   always_comb begin
+      count_en_comb = '0;
+      case ({tmr_ctrl_reg.start, tmr_ctrl_reg.stop})
+         2'b00: count_en_comb = count_en_ff; //Start = 0, Stop = 0 -> Timer Keep current state
+         2'b01: count_en_comb = 1'b0;        //Start = 0, Stop = 1 -> Timer Stops
+         2'b10: count_en_comb = 1'b1;        //Start = 1, Stop = 0 -> Timer Starts
+         2'b11: count_en_comb = 1'b0;        //Start = 1, Stop = 1 -> Timer Stops
+      endcase
+   end
+
+   always_ff @(posedge tmr_clk or negedge sys_rst_n) begin
+      if(!sys_rst_n) begin
+         count_en_ff <= 0;
+      end else begin
+         count_en_ff <= count_en_comb;
+      end
+   end
+   //Or between original value and flopped value to avoid delaying the operation by one tmr_clk
+   assign count_en = count_en_ff | count_en_comb;
+
+   //Timer Value Flop and combo logic
+   always_comb begin
+      if(tmr_ctrl_reg.rst)             //Reset Timer value
+         tmr_value_comb = '0;
+      else if(tmr_ctrl_reg.ld)         //Load Timer value from register
+         tmr_value_comb = tmr_val_reg.tmr_val;
+      else if(tmr_ctrl_reg.count_en)   //Enable Timer to count
+         tmr_value_comb = tmr_value + 1'b1;
+      else                             //Timer retain value
+         tmr_value_comb = tmr_value;
+   end
+
+   always_ff @(posedge tmr_clk or negedge sys_rst_n) begin
+      if(!sys_rst_n) begin
+         tmr_value_ff <= '0;
+      end else begin
+         tmr_value_ff <= tmr_value_comb;
+      end
+   end
+
+   assign tmr_value = tmr_value_ff;
+
+   //Timer events logic
+   assign match0_event = (tmr_value == tmr_match_val0_reg.tmr_mch_val0);
+   assign match1_event = (tmr_value == tmr_match_val1_reg.tmr_mch_val1);
+   assign ovf_event = tmr_value_comb[32];
+
+   //Hardware update bit fields logic
+   always_comb begin
+      //By default tie the wires to 0's
+      tmr_hw_up_ctrl             = '0;
+      tmr_hw_up_val              = '0;
+      tmr_hw_up_match_val0       = '0;
+      tmr_hw_up_match_val1       = '0;
+      tmr_hw_val_ctrl            = '0;
+      tmr_hw_val_val             = '0;
+      tmr_hw_val_match_val0      = '0;
+      tmr_hw_val_match_val1      = '0;
+      //HW update trigger
+      tmr_hw_up_ctrl.rst         = tmr_ctrl_reg.rst;
+      tmr_hw_up_ctrl.ld          = tmr_ctrl_reg.ld;
+      tmr_hw_up_ctrl.rd          = tmr_ctrl_reg.rd;
+      tmr_hw_up_ctrl.stop        = tmr_ctrl_reg.stop;
+      tmr_hw_up_ctrl.start       = tmr_ctrl_reg.start;
+      tmr_hw_up_ctrl.match0_f    = match0_event;   //TODO Should this persist until make sure it is written is SFR? //SFRS should be on the fastest clock and this could be avoided
+      tmr_hw_up_ctrl.match1_f    = match1_event;   //TODO Should this persist until make sure it is written is SFR?
+      tmr_hw_up_ctrl.ovf_f       = ovf_event;      //TODO Should this persist until make sure it is written is SFR?
+      tmr_hw_up_val.tmr_val      = {(DATA_WIDTH-1){tmr_ctrl_reg.rd}}; //Update all value bits when RD is set
+      //HW update value
+      tmr_hw_val_ctrl.rst        = 1'b0;        //HC
+      tmr_hw_val_ctrl.ld         = 1'b0;        //HC
+      tmr_hw_val_ctrl.rd         = 1'b0;        //HC
+      tmr_hw_val_ctrl.stop       = 1'b0;        //HC
+      tmr_hw_val_ctrl.start      = 1'b0;        //HC
+      tmr_hw_val_ctrl.match0_f   = 1'b1;        //HS
+      tmr_hw_val_ctrl.match1_f   = 1'b1;        //HS
+      tmr_hw_val_val.tmr_val     = tmr_value;   //HS/HC
+   end
+
+
+   //==========================
+   // Spec Assertions
+   //==========================
+
+   `ifdef DESIGNER_ASSERTIONS
+      //TODO add assertions
+   `endif
+
+
+endmodule : timer_nbit_v1

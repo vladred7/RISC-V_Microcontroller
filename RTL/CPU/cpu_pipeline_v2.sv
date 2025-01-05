@@ -416,4 +416,33 @@ module cpu_pipeline_v2 #(
       //TODO add assertions
    `endif
 
+   `ifndef SYNTHESIS
+      //Debug code zone -> this will be ignored during Synthesis
+      cpu_opcode_t   debug_opcode_f;
+      cpu_opcode_t   debug_opcode_d;
+      cpu_opcode_t   debug_opcode_e;
+      cpu_opcode_t   debug_opcode_m;
+      cpu_opcode_t   debug_opcode_w; 
+      instr_t        debug_instruction_f;
+
+      assign debug_instruction_f = pfm_rd_instr;
+      assign debug_opcode_f = debug_instruction_f.opc;
+
+      always_ff @(posedge sys_clk or negedge sys_rst_n) begin
+         if(!sys_rst_n) begin
+            debug_opcode_d <= '0;
+            debug_opcode_e <= '0;
+            debug_opcode_m <= '0;
+            debug_opcode_w <= '0;
+         end else begin
+            debug_opcode_d <= (d_flush) ? '0             :
+                              (d_stall) ? debug_opcode_d :
+                                          debug_opcode_f ;
+            debug_opcode_e <= (e_flush) ? '0 : debug_opcode_d;
+            debug_opcode_m <= debug_opcode_e;
+            debug_opcode_w <= debug_opcode_m;
+         end
+      end
+   `endif
+
 endmodule : cpu_pipeline_v2

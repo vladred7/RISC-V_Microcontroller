@@ -18,31 +18,37 @@ package pkg_sfrs_definition;
 
 
    //==========================
-   // Timer 0 SFRs
+   // Timer SFRs types
    //==========================
    typedef struct packed {
       logic [31:16] unimplemented_31_16;
       logic [   15] ovf_f;
-      logic [   14] match_f;
-      logic [13:12] unimplemented_13_12;
+      logic [   14] match1_f;
+      logic [   13] match0_f;
+      logic [   12] unimplemented_12;
       logic [   11] usesclk;
       logic [   10] unimplemented_10;
       logic [ 9: 8] clksrc;
-      logic [    7] oen;
-      logic [    6] oinv;
-      logic [ 5: 3] unimplemented_5_3;
+      logic [    7] start;
+      logic [    6] stop;
+      logic [ 5: 4] unimplemented_5_4;
+      logic [    3] rd;
       logic [    2] ld;
       logic [    1] rst;
       logic [    0] on;
-   } tmr0_ctrl_t;
+   } tmr_ctrl_t;
 
    typedef struct packed {
-      logic [31: 0] tval;
-   } tmr0_val_t;
+      logic [31: 0] tmr_val;
+   } tmr_val_t;
 
    typedef struct packed {
-      logic [31: 0] tmch;
-   } tmr0_match_val_t;
+      logic [31: 0] tmr_mch_val0;
+   } tmr_match_val0_t;
+
+   typedef struct packed {
+      logic [31: 0] tmr_mch_val1;
+   } tmr_match_val1_t;
    
 
 

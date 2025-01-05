@@ -22,7 +22,8 @@ package pkg_cpu_typedefs;
       LUI      = 7'b0110111,
       B_TYPE   = 7'b1100011,
       JALR     = 7'b1100111,
-      J_TYPE   = 7'b1101111
+      J_TYPE   = 7'b1101111,
+      NOP      = 7'b0000000
    } cpu_opcode_t;
 
    typedef enum bit [4:0] {
