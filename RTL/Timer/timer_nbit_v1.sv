@@ -51,7 +51,7 @@ module timer_nbit_v1 #(
    tmr_match_val0_t     tmr_hw_val_match_val0;
    tmr_match_val1_t     tmr_hw_val_match_val1;
    logic                tmr_clk;
-   logic   [N:0]        tmr_value_comb;         //Timer value combo has 1 bit for OVF detection
+   logic   [N:0]        tmr_value_comb;         //Timer value combo has 1 more MSbit for OVF detection
    logic [N-1:0]        tmr_value;
    logic                count_en_comb;
    logic                count_en;
@@ -64,6 +64,7 @@ module timer_nbit_v1 #(
    logic                count_en_ff;
 
 //TODO CLOCK SELECTION LOGIC BASE ON clk src bits in SFR (should I do this logic on the top module?)
+//TODO ADD DCO as a supported clock source for the timer
    //==========================
    // Input Clock Gate Logic
    //==========================
@@ -106,7 +107,7 @@ module timer_nbit_v1 #(
          tmr_value_comb = '0;
       else if(tmr_ctrl_reg.ld)         //Load Timer value from register
          tmr_value_comb = tmr_val_reg.tmr_val;
-      else if(tmr_ctrl_reg.count_en)   //Enable Timer to count
+      else if(count_en)                //Enable Timer to count
          tmr_value_comb = tmr_value + 1'b1;
       else                             //Timer retain value
          tmr_value_comb = tmr_value;
@@ -123,11 +124,29 @@ module timer_nbit_v1 #(
    assign tmr_value = tmr_value_ff;
 
    //Timer events logic
-   assign match0_event = (tmr_value == tmr_match_val0_reg.tmr_mch_val0);
-   assign match1_event = (tmr_value == tmr_match_val1_reg.tmr_mch_val1);
-   assign ovf_event = tmr_value_comb[32];
+   assign match0  = (tmr_value == tmr_match_val0_reg.tmr_mch_val0);
+   assign match1  = (tmr_value == tmr_match_val1_reg.tmr_mch_val1);
+   assign ovf     = tmr_value_comb[32];
 
+   always_ff @(posedge tmr_clk or negedge sys_rst_n) begin
+      if(!sys_rst_n) begin
+         match0_ff <= 1'b0;
+         match1_ff <= 1'b0;
+         ovf_ff    <= 1'b0;
+      end else begin
+         match0_ff <= match0 & tmr_ctrl_reg.match0_en;
+         match1_ff <= match1 & tmr_ctrl_reg.match1_en;
+         ovf_ff    <= ovf    & tmr_ctrl_reg.ovf_en; 
+      end
+   end
+
+   assign match0_event  = match0_ff;
+   assign match1_event  = match1_ff;
+   assign ovf_event     = ovf_ff; 
+
+   //==========================
    //Hardware update bit fields logic
+   //==========================
    always_comb begin
       //By default tie the wires to 0's
       tmr_hw_up_ctrl             = '0;
@@ -139,15 +158,17 @@ module timer_nbit_v1 #(
       tmr_hw_val_match_val0      = '0;
       tmr_hw_val_match_val1      = '0;
       //HW update trigger
+      //TODO What if the IP clock is slower than system? need to somehow fix this problem
+      //FIXME Sample signals in timer clock domain
       tmr_hw_up_ctrl.rst         = tmr_ctrl_reg.rst;
       tmr_hw_up_ctrl.ld          = tmr_ctrl_reg.ld;
-      tmr_hw_up_ctrl.rd          = tmr_ctrl_reg.rd;
+      tmr_hw_up_ctrl.rd          = tmr_ctrl_reg.rd; //FIXME this probably wont need anything because the reed can be faster than the timer
       tmr_hw_up_ctrl.stop        = tmr_ctrl_reg.stop;
       tmr_hw_up_ctrl.start       = tmr_ctrl_reg.start;
-      tmr_hw_up_ctrl.match0_f    = match0_event;   //TODO Should this persist until make sure it is written is SFR? //SFRS should be on the fastest clock and this could be avoided
-      tmr_hw_up_ctrl.match1_f    = match1_event;   //TODO Should this persist until make sure it is written is SFR?
-      tmr_hw_up_ctrl.ovf_f       = ovf_event;      //TODO Should this persist until make sure it is written is SFR?
-      tmr_hw_up_val.tmr_val      = {(DATA_WIDTH-1){tmr_ctrl_reg.rd}}; //Update all value bits when RD is set
+      tmr_hw_up_ctrl.match0_f    = match0;      //These events are dependent on the timer clock domain that is always slower than the system.
+      tmr_hw_up_ctrl.match1_f    = match1;      //These events are dependent on the timer clock domain that is always slower than the system.
+      tmr_hw_up_ctrl.ovf_f       = ovf;         //These events are dependent on the timer clock domain that is always slower than the system.
+      tmr_hw_up_val.tmr_val      = {(DATA_WIDTH-1){tmr_ctrl_reg.rd}}; //Update all value bits when RD is set //FIXME this probably wont need anything because the reed can be faster than the timer
       //HW update value
       tmr_hw_val_ctrl.rst        = 1'b0;        //HC
       tmr_hw_val_ctrl.ld         = 1'b0;        //HC
@@ -158,6 +179,16 @@ module timer_nbit_v1 #(
       tmr_hw_val_ctrl.match1_f   = 1'b1;        //HS
       tmr_hw_val_val.tmr_val     = tmr_value;   //HS/HC
    end
+
+   //Assign the HW update output ports
+   assign hw_up_tmr_ctrl        = tmr_hw_up_ctrl;
+   assign hw_up_tmr_val         = tmr_hw_up_val;
+   assign hw_up_tmr_match_val0  = tmr_hw_up_match_val0;
+   assign hw_up_tmr_match_val1  = tmr_hw_up_match_val1;
+   assign hw_val_tmr_ctrl       = tmr_hw_val_ctrl;
+   assign hw_val_tmr_val        = tmr_hw_val_val;
+   assign hw_val_tmr_match_val0 = tmr_hw_val_match_val0;
+   assign hw_val_tmr_match_val1 = tmr_hw_val_match_val1;
 
 
    //==========================
