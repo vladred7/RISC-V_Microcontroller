@@ -378,6 +378,14 @@ module cpu_reg_bank_tb ();
          report_passrate();
       endtask : write_read_test
 
+      task hw_up_bit_test();
+         $display("This test is not required!");
+      endtask : hw_up_bit_test
+
+      task hwsw_up_prio_test();
+         $display("This test is not required!");
+      endtask : hwsw_up_prio_test
+
    endclass : reg_file_tests_c 
 
    //Define a clocking block for the input signals
@@ -427,6 +435,16 @@ module cpu_reg_bank_tb ();
       $display("//|                    Write-Read Test Start                     |//");
       $display("//+--------------------------------------------------------------+//");
       test_sequence.write_read_test();
+
+      $display("//+--------------------------------------------------------------+//");
+      $display("//|              Hardware Update fields Test Start               |//");
+      $display("//+--------------------------------------------------------------+//");
+      test_sequence.hw_up_bit_test();
+
+      $display("//+--------------------------------------------------------------+//");
+      $display("//|        Hardware/Software Update Priority Test Start          |//");
+      $display("//+--------------------------------------------------------------+//");
+      test_sequence.hwsw_up_prio_test();
 
       $display("Stopping simulation.");
       $finish;

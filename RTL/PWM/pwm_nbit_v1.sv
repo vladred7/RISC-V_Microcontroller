@@ -53,6 +53,8 @@ module pwm_nbit_v1 #(
    pwm_tmr_t            pwm_hw_val_tmr;
    pwm_cfg0_t           pwm_hw_val_cfg0;
    pwm_cfg1_t           pwm_hw_val_cfg1;
+   logic                pwm_rst_dly;
+   logic                pwm_ld_dly;
    logic                pwm_clk;
    logic [N-1:0]        shadow_pr;
    logic [N-1:0]        shadow_dc;
@@ -70,6 +72,8 @@ module pwm_nbit_v1 #(
    // Flip-flop declarations
    //==========================
    logic                sys_clk_en_sync;
+   logic                pwm_rst_dly_ff;
+   logic                pwm_ld_dly_ff;
    logic [N-1:0]        shadow_pr_ff;
    logic [N-1:0]        shadow_dc_ff;
    logic [N-1:0]        shadow_ph_ff;
@@ -80,14 +84,33 @@ module pwm_nbit_v1 #(
    logic                ph_match_ff;
    logic                of_match_ff;
    logic                pwm_out_ff;
+
    
 //TODO CLOCK SELECTION LOGIC BASE ON clk src bits in SFR (should I do this logic on the top module?)
    //==========================
    // Input Clock Gate Logic
    //==========================
    //Gate the clock if chip low power mode is enabled or if the module is disabled
-   always_ff @(negedge sys_clk) sys_clk_en_sync <= sys_clk_en | pwm_ctrl_reg.on; //Sample clock enable on the negedge of the clock to avoid glitches
+   always_ff @(negedge sys_clk) sys_clk_en_sync <= sys_clk_en & pwm_ctrl_reg.on; //Sample clock enable on the negedge of the clock to avoid glitches
    assign pwm_clk = sys_clk & sys_clk_en_sync;
+
+
+   //==========================
+   // Sample fast signals in the pwm clock domain
+   //==========================
+   always_ff @(posedge pwm_clk or negedge sys_rst_n) begin
+      if(!sys_rst_n) begin
+         pwm_rst_dly_ff <= 1'b0;
+         pwm_ld_dly_ff  <= 1'b0;
+      end else begin
+         pwm_rst_dly_ff <= pwm_ctrl_reg.rst;
+         pwm_ld_dly_ff  <= pwm_ctrl_reg.ld;
+      end
+   end
+
+   assign pwm_rst_dly = pwm_rst_dly_ff;
+   assign pwm_ld_dly  = pwm_ld_dly_ff;
+
 
    //==========================
    // PWM Logic
@@ -122,9 +145,9 @@ module pwm_nbit_v1 #(
    //This does not need a start trigger because the user can set the OEN and RST bits 
    //simultaneously producing a fresh start of the PWM timer
    always_comb begin
-      if(pwm_ctrl_reg.rst | pr_match)        //Reset Timer value
+      if(pwm_rst_dly | pr_match)             //Reset Timer value
          pwm_tmr_value_comb = '0;
-      else if(pwm_ctrl_reg.ld)               //Load Timer value from register
+      else if(pwm_ld_dly)                    //Load Timer value from register
          pwm_tmr_value_comb = pwm_tmr_reg.tval;
       else                                   //Timer Increments
          pwm_tmr_value_comb = tmr_value + 1'b1;
@@ -168,7 +191,7 @@ module pwm_nbit_v1 #(
    //PWM Output logic
    always_comb begin
       //Reset PWM_OUT value,                 DC<=PH exception out should be 0
-      if(pwm_ctrl_reg.rst | dc_match | (shadow_dc <= shadow_ph))
+      if(pwm_rst_dly | dc_match | (shadow_dc <= shadow_ph))
          pwm_out_comb = 1'b0;
       else if(ph_match)
          pwm_out_comb = 1'b1;
@@ -199,17 +222,20 @@ module pwm_nbit_v1 #(
       pwm_hw_val_cfg0         = '0;
       pwm_hw_val_cfg1         = '0;
       //HW update trigger
-      //TODO What if the IP clock is slower than system? need to somehow fix this problem
-      //FIXME Sample signals in timer clock domain
-      pwm_hw_up_ctrl.rst      = pwm_ctrl_reg.rst; //FIXME
-      pwm_hw_up_ctrl.ld       = pwm_ctrl_reg.ld; //FIXME 
-      pwm_hw_up_ctrl.rd       = pwm_ctrl_reg.rd; //FIXME this probably wont need anything because the reed can be faster than the pwm
-      pwm_hw_up_ctrl.ld_trg   = pwm_ctrl_reg.ld_trg & pr_match; //This is dependent on an event in pwm clock domain so if the pwm is slower this still works.
-      pwm_hw_up_ctrl.prm_f    = pr_match; //These events are dependent on the pwm clock domain that is always slower than the system.
-      pwm_hw_up_ctrl.dcm_f    = dc_match; //These events are dependent on the pwm clock domain that is always slower than the system.
-      pwm_hw_up_ctrl.phm_f    = ph_match; //These events are dependent on the pwm clock domain that is always slower than the system.
-      pwm_hw_up_ctrl.ofm_f    = of_match; //These events are dependent on the pwm clock domain that is always slower than the system.
-      pwm_hw_up_tmr.tval      = {(N-1){pwm_ctrl_reg.rd}}; //FIXME this probably wont need anything because the reed can be faster than the pwm
+         //These signals were delayed to support a lower clock frequency than system
+      pwm_hw_up_ctrl.rst      = pwm_rst_dly; 
+      pwm_hw_up_ctrl.ld       = pwm_ld_dly;
+         //Read can be faster then pwm clock domain
+      pwm_hw_up_ctrl.rd       = pwm_ctrl_reg.rd;
+         //This is dependent on an event in pwm clock domain so if the pwm is slower this still works.
+      pwm_hw_up_ctrl.ld_trg   = pwm_ctrl_reg.ld_trg & pr_match;
+         //These events are dependent on the pwm clock domain that is always slower than the system.
+      pwm_hw_up_ctrl.prm_f    = pr_match;
+      pwm_hw_up_ctrl.dcm_f    = dc_match;
+      pwm_hw_up_ctrl.phm_f    = ph_match;
+      pwm_hw_up_ctrl.ofm_f    = of_match;
+         //Read can be faster then pwm clock domain
+      pwm_hw_up_tmr.tval      = {(N-1){pwm_ctrl_reg.rd}};
       //HW update value
       pwm_hw_val_ctrl.rst     = 1'b0;           //HC
       pwm_hw_val_ctrl.ld      = 1'b0;           //HC

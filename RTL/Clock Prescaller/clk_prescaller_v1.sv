@@ -11,7 +11,6 @@ module clk_prescaller_v1 #(
    input                         sys_clk,
    input                         sys_clk_en,
    input                         sys_rst_n,
-   //TODO input Prescaller SFR interface
    //    Output ports definition
    output [DIV_RESOLUTION-1:0]   pclk_out
 );

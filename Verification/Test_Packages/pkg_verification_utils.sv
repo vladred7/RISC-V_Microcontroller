@@ -79,7 +79,6 @@ package pkg_verification_utils;
 
    //Declare an abstract class as a template for all register tests
    virtual class register_standard_tests_c;
-
       //Reset Test
       pure virtual task reset_test();
       
@@ -91,6 +90,12 @@ package pkg_verification_utils;
 
       //Write-Read Test (patterns)
       pure virtual task write_read_test();
+
+      //Hardware Update fields Test
+      pure virtual task hw_up_bit_test();
+
+      //Hardware/Software Update Priority Test
+      pure virtual task hwsw_up_prio_test();
 
    endclass : register_standard_tests_c
 

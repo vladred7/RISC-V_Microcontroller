@@ -50,6 +50,8 @@ module timer_nbit_v1 #(
    tmr_val_t            tmr_hw_val_val;
    tmr_match_val0_t     tmr_hw_val_match_val0;
    tmr_match_val1_t     tmr_hw_val_match_val1;
+   logic                tmr_rst_dly;
+   logic                tmr_ld_dly;
    logic                tmr_clk;
    logic   [N:0]        tmr_value_comb;         //Timer value combo has 1 more MSbit for OVF detection
    logic [N-1:0]        tmr_value;
@@ -60,16 +62,34 @@ module timer_nbit_v1 #(
    // Flip-flop declarations
    //==========================
    logic                sys_clk_en_sync;
+   logic                tmr_rst_dly_ff;
+   logic                tmr_ld_dly_ff;
    logic [N-1:0]        tmr_value_ff;
    logic                count_en_ff;
 
 //TODO CLOCK SELECTION LOGIC BASE ON clk src bits in SFR (should I do this logic on the top module?)
 //TODO ADD DCO as a supported clock source for the timer
    //==========================
+   // Sample fast signals in the pwm clock domain
+   //==========================
+   always_ff @(posedge pwm_clk or negedge sys_rst_n) begin
+      if(!sys_rst_n) begin
+         tmr_rst_dly_ff <= 1'b0;
+         tmr_ld_dly_ff  <= 1'b0;
+      end else begin
+         tmr_rst_dly_ff <= tmr_ctrl_reg.rst;
+         tmr_ld_dly_ff  <= tmr_ctrl_reg.ld;
+      end
+   end
+
+   assign tmr_rst_dly = tmr_rst_dly_ff;
+   assign tmr_ld_dly  = tmr_ld_dly_ff;
+
+   //==========================
    // Input Clock Gate Logic
    //==========================
    //Gate the clock if chip low power mode is enabled or if the module is disabled
-   always_ff @(negedge sys_clk) sys_clk_en_sync <= sys_clk_en | tmr_ctrl_reg.on; //Sample clock enable on the negedge of the clock to avoid glitches
+   always_ff @(negedge sys_clk) sys_clk_en_sync <= sys_clk_en & tmr_ctrl_reg.on; //Sample clock enable on the negedge of the clock to avoid glitches
    assign tmr_clk = sys_clk & sys_clk_en_sync;
 
    //==========================
@@ -103,9 +123,9 @@ module timer_nbit_v1 #(
 
    //Timer Value Flop and combo logic
    always_comb begin
-      if(tmr_ctrl_reg.rst)             //Reset Timer value
+      if(tmr_rst_dly)                  //Reset Timer value
          tmr_value_comb = '0;
-      else if(tmr_ctrl_reg.ld)         //Load Timer value from register
+      else if(tmr_ld_dly)              //Load Timer value from register
          tmr_value_comb = tmr_val_reg.tmr_val;
       else if(count_en)                //Enable Timer to count
          tmr_value_comb = tmr_value + 1'b1;
@@ -158,17 +178,20 @@ module timer_nbit_v1 #(
       tmr_hw_val_match_val0      = '0;
       tmr_hw_val_match_val1      = '0;
       //HW update trigger
-      //TODO What if the IP clock is slower than system? need to somehow fix this problem
-      //FIXME Sample signals in timer clock domain
-      tmr_hw_up_ctrl.rst         = tmr_ctrl_reg.rst;
-      tmr_hw_up_ctrl.ld          = tmr_ctrl_reg.ld;
-      tmr_hw_up_ctrl.rd          = tmr_ctrl_reg.rd; //FIXME this probably wont need anything because the reed can be faster than the timer
-      tmr_hw_up_ctrl.stop        = tmr_ctrl_reg.stop;
-      tmr_hw_up_ctrl.start       = tmr_ctrl_reg.start;
-      tmr_hw_up_ctrl.match0_f    = match0;      //These events are dependent on the timer clock domain that is always slower than the system.
-      tmr_hw_up_ctrl.match1_f    = match1;      //These events are dependent on the timer clock domain that is always slower than the system.
-      tmr_hw_up_ctrl.ovf_f       = ovf;         //These events are dependent on the timer clock domain that is always slower than the system.
-      tmr_hw_up_val.tmr_val      = {(DATA_WIDTH-1){tmr_ctrl_reg.rd}}; //Update all value bits when RD is set //FIXME this probably wont need anything because the reed can be faster than the timer
+         //These signals were delayed to support a lower clock frequency than system
+      tmr_hw_up_ctrl.rst         = tmr_rst_dly;
+      tmr_hw_up_ctrl.ld          = tmr_ld_dly;
+         //Read can be faster then tmr clock domain
+      tmr_hw_up_ctrl.rd          = tmr_ctrl_reg.rd;
+         //Count_en  is in the tmr domain clock that is slower t han system
+      tmr_hw_up_ctrl.stop        = tmr_ctrl_reg.stop & (!count_en);
+      tmr_hw_up_ctrl.start       = tmr_ctrl_reg.start & count_en;
+         //These events are dependent on the timer clock domain that is always slower than the system.
+      tmr_hw_up_ctrl.match0_f    = match0;      
+      tmr_hw_up_ctrl.match1_f    = match1;
+      tmr_hw_up_ctrl.ovf_f       = ovf;
+         //Read can be faster then tmr clock domain
+      tmr_hw_up_val.tmr_val      = {(DATA_WIDTH-1){tmr_ctrl_reg.rd}};
       //HW update value
       tmr_hw_val_ctrl.rst        = 1'b0;        //HC
       tmr_hw_val_ctrl.ld         = 1'b0;        //HC

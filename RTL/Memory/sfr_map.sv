@@ -4,7 +4,7 @@ module sfr_map #(
    //    Input ports definition
    input                   sys_clk,
    input                   sys_clk_en,
-   input                   sys_rst_n,
+   input                   sys_rst_n
    //input                   sfr_wen,
    //input  [SFR_WIDTH-1:0]  sfr_din,
    //    Output ports definition

@@ -554,6 +554,13 @@ module sfr_module_v1_tb#(
       endtask : write_read_test
 
       //TODO implement HW update tests (priority functionality etc)
+      task hw_up_bit_test();
+         $display("IMPLEMENT THIS TEST!!!");
+      endtask : hw_up_bit_test
+
+      task hwsw_up_prio_test();
+         $display("IMPLEMENT THIS TEST!!!");
+      endtask : hwsw_up_prio_test
 
    endclass : sfr_tests_c 
 
@@ -610,6 +617,16 @@ module sfr_module_v1_tb#(
       $display("//|                    Write-Read Test Start                     |//");
       $display("//+--------------------------------------------------------------+//");
       test_sequence.write_read_test();
+
+      $display("//+--------------------------------------------------------------+//");
+      $display("//|              Hardware Update fields Test Start               |//");
+      $display("//+--------------------------------------------------------------+//");
+      test_sequence.hw_up_bit_test();
+
+      $display("//+--------------------------------------------------------------+//");
+      $display("//|        Hardware/Software Update Priority Test Start          |//");
+      $display("//+--------------------------------------------------------------+//");
+      test_sequence.hwsw_up_prio_test();
 
       $display("Stopping simulation.");
       $finish;
