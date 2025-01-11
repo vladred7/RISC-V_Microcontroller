@@ -81,7 +81,8 @@ module sfr_module_v1 #(
    end
 
    //All SFR outputs will be gated by enable because in the register map they will be ored together
-   assign sfr_dout = (sfr_rden) ? sfr_value_ff : '0;
+   //assign sfr_dout = (sfr_rden) ? sfr_value_ff : '0; //TODO bug this should not be gated but may need to add another output for the system
+   assign sfr_dout = sfr_value_ff;
    assign sfr_rdonly_dout = (sfr_rden) ? (sfr_value_ff & READABLE_BITS_MASK) : '0;
 
    //==========================

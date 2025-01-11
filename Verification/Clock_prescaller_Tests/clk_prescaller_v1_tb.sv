@@ -1,3 +1,8 @@
+//######################################## Header ########################################
+//# Author: Vlad Rosu                                                                    #
+//# Description: Testbench for the prescaller module                                     #
+//########################################################################################
+
 module clk_prescaller_v1_tb #(
    parameter DIV_RES = 4
 ) ();

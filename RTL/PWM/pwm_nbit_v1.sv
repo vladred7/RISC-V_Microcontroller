@@ -6,7 +6,7 @@
 
 module pwm_nbit_v1 #(
    parameter DATA_WIDTH = 32,
-   parameter N = 32
+   parameter N = 16
 )(
    //    Input ports definition
    input                      sys_clk,
@@ -16,7 +16,6 @@ module pwm_nbit_v1 #(
    input  [DATA_WIDTH-1:0]    pwm_tmr,
    input  [DATA_WIDTH-1:0]    pwm_cfg0,
    input  [DATA_WIDTH-1:0]    pwm_cfg1,
-   //TODO input PWM SFR interface
    //    Output ports definition
    output [DATA_WIDTH-1:0]    hw_up_pwm_ctrl,
    output [DATA_WIDTH-1:0]    hw_up_pwm_tmr,
@@ -55,6 +54,7 @@ module pwm_nbit_v1 #(
    pwm_cfg1_t           pwm_hw_val_cfg1;
    logic                pwm_rst_dly;
    logic                pwm_ld_dly;
+   logic                pwm_ld_trg_dly;
    logic                pwm_clk;
    logic [N-1:0]        shadow_pr;
    logic [N-1:0]        shadow_dc;
@@ -74,6 +74,7 @@ module pwm_nbit_v1 #(
    logic                sys_clk_en_sync;
    logic                pwm_rst_dly_ff;
    logic                pwm_ld_dly_ff;
+   logic                pwm_ld_trg_dly_ff;
    logic [N-1:0]        shadow_pr_ff;
    logic [N-1:0]        shadow_dc_ff;
    logic [N-1:0]        shadow_ph_ff;
@@ -100,16 +101,19 @@ module pwm_nbit_v1 #(
    //==========================
    always_ff @(posedge pwm_clk or negedge sys_rst_n) begin
       if(!sys_rst_n) begin
-         pwm_rst_dly_ff <= 1'b0;
-         pwm_ld_dly_ff  <= 1'b0;
+         pwm_rst_dly_ff    <= 1'b0;
+         pwm_ld_dly_ff     <= 1'b0;
+         pwm_ld_trg_dly_ff <= 1'b0;
       end else begin
-         pwm_rst_dly_ff <= pwm_ctrl_reg.rst;
-         pwm_ld_dly_ff  <= pwm_ctrl_reg.ld;
+         pwm_rst_dly_ff    <= pwm_ctrl_reg.rst;
+         pwm_ld_dly_ff     <= pwm_ctrl_reg.ld;
+         pwm_ld_trg_dly_ff <= pwm_ctrl_reg.ld_trg; //use this signal only as a hwupd clear bit
       end
    end
 
    assign pwm_rst_dly = pwm_rst_dly_ff;
    assign pwm_ld_dly  = pwm_ld_dly_ff;
+   assign pwm_ld_trg_dly  = pwm_ld_trg_dly_ff;
 
 
    //==========================
@@ -150,7 +154,7 @@ module pwm_nbit_v1 #(
       else if(pwm_ld_dly)                    //Load Timer value from register
          pwm_tmr_value_comb = pwm_tmr_reg.tval;
       else                                   //Timer Increments
-         pwm_tmr_value_comb = tmr_value + 1'b1;
+         pwm_tmr_value_comb = pwm_tmr_value + 1'b1;
    end
 
    always_ff @(posedge pwm_clk or negedge sys_rst_n) begin
@@ -163,7 +167,7 @@ module pwm_nbit_v1 #(
 
    assign pwm_tmr_value = pwm_tmr_value_ff;
 
-   //PWM Events Logic
+   //PWM Events Logic //TODO can speed up here
    assign pr_match = (pwm_tmr_value == shadow_pr);
    assign dc_match = (pwm_tmr_value == shadow_dc);
    assign ph_match = (pwm_tmr_value == shadow_ph);
@@ -228,7 +232,7 @@ module pwm_nbit_v1 #(
          //Read can be faster then pwm clock domain
       pwm_hw_up_ctrl.rd       = pwm_ctrl_reg.rd;
          //This is dependent on an event in pwm clock domain so if the pwm is slower this still works.
-      pwm_hw_up_ctrl.ld_trg   = pwm_ctrl_reg.ld_trg & pr_match;
+      pwm_hw_up_ctrl.ld_trg   = pwm_ld_trg_dly & pr_match_ff;
          //These events are dependent on the pwm clock domain that is always slower than the system.
       pwm_hw_up_ctrl.prm_f    = pr_match;
       pwm_hw_up_ctrl.dcm_f    = dc_match;

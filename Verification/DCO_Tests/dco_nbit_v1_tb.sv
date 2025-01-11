@@ -1,3 +1,8 @@
+//######################################## Header ########################################
+//# Author: Vlad Rosu                                                                    #
+//# Description: Tesetbench for digital controlled oscillator module                     #
+//########################################################################################
+
 module dco_nbit_v1_tb#(
    parameter DATA_WIDTH = 32,
    parameter N = 20
@@ -45,8 +50,6 @@ module dco_nbit_v1_tb#(
    bit                     tb_clk;
    bit              [3:0]  tb_clk_div;
    bit                     tb_dut_clk_dly;
-   bit                     tb_dut_posedge_detect;
-   bit                     tb_dut_negedge_detect;
 
    //For debug waveform
    logic                   debug_clk_en;
