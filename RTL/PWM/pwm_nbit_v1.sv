@@ -199,6 +199,8 @@ module pwm_nbit_v1 #(
          pwm_out_comb = 1'b0;
       else if(ph_match)
          pwm_out_comb = 1'b1;
+      else
+         pwm_out_comb = pwm_out_ff;
    end
 
    always_ff @(posedge pwm_clk or negedge sys_rst_n) begin

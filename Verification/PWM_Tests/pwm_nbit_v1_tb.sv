@@ -174,6 +174,7 @@ module pwm_nbit_v1_tb#(
    logic                   dbg_ph_ev;
    logic                   dbg_of_ev;
    logic                   dbg_pwm_out;
+   logic                   dbg_pwm_out_port;
    logic                   dbg_clk_en;
    logic                   dbg_rst_bit;
    logic                   dbg_ld_bit;
@@ -211,9 +212,12 @@ module pwm_nbit_v1_tb#(
    int unsigned            test_count = 0;
    bit                     tb_clk;
    bit              [3:0]  tb_clk_div;
+   bit                     tb_model_clk;
+   bit                     enable_model_clk;
    bit             [31:0]  tb_addr;
    bit                     tb_wen;
    bit   [DATA_WIDTH-1:0]  tb_wr_data_bus;
+
 
    task front_door_write_sfr(bit [31:0] addr, bit [DATA_WIDTH-1:0] data);
       cb.tb_addr        <= addr; //Put address on the addr bus
@@ -257,7 +261,7 @@ module pwm_nbit_v1_tb#(
       bit                  dc_ev,      q_dc_ev;
       bit                  ph_ev,      q_ph_ev;
       bit                  of_ev,      q_of_ev;
-      bit                  pwm_out,    q_pwm_out;
+      bit                  pwm_out,    q_pwm_out, pwm_out_port;
       //Model Internal logic
       bit                  clk_en,     q_clk_en;
       bit                  rst_bit,    q_rst_bit;
@@ -275,11 +279,15 @@ module pwm_nbit_v1_tb#(
 
 
       //Class Methods
+      function new();
+         
+      endfunction : new
+
       function void update_clk_posedge();
-         q_pr_ev      = pr_ev;
-         q_dc_ev      = dc_ev;
-         q_ph_ev      = ph_ev;
-         q_of_ev      = of_ev;
+         q_pr_ev      = pr_mch;
+         q_dc_ev      = dc_mch;
+         q_ph_ev      = ph_mch;
+         q_of_ev      = of_mch;
          q_pwm_out    = pwm_out;
          q_rst_bit    = rst_bit;
          q_ld_bit     = ld_bit;
@@ -295,19 +303,23 @@ module pwm_nbit_v1_tb#(
          q_of_mch     = of_mch;
       endfunction : update_clk_posedge
 
-      function void update_clk_negedge();
-         q_clk_en     = clk_en;
-      endfunction : update_clk_negedge
+      // function void update_clk_negedge();
+      //    q_clk_en     = clk_en;
+      // endfunction : update_clk_negedge
 
-      function void update_clk_gate();
-         this.clk_en = tb_clk_en;
-      endfunction : update_clk_gate
+      function void update_reset();
+         //TODO IMPLEMENT
+      endfunction : update_reset
+
+      // function void update_clk_gate();
+      //    this.clk_en = tb_clk_en;
+      // endfunction : update_clk_gate
 
       function void update_timer();
-         if(pwm_ctrl_sfr_out.on && tb_rst_n && q_clk_en) begin
-            if(q_rst_bit | pr_mch) 
+         if(tb_rst_n) begin
+            if((rst_bit & q_rst_bit) | (q_tmr === q_pr_val)) 
                tmr = '0;
-            else if(q_ld_bit) 
+            else if(ld_bit) 
                tmr = pwm_tmr_sfr_out.tval;
             else
                tmr = q_tmr + 1;
@@ -315,53 +327,56 @@ module pwm_nbit_v1_tb#(
       endfunction : update_timer
 
       function void update_match_event_outputs();
-         pr_mch = (tmr === pr_val);
-         dc_mch = (tmr === dc_val);
-         ph_mch = (tmr === ph_val);
-         of_mch = (tmr === of_val);
-         if(pwm_ctrl_sfr_out.on && tb_rst_n && q_clk_en) begin
-            pr_ev = pr_mch && pwm_ctrl_sfr_out.prm_en;
-            dc_ev = dc_mch && pwm_ctrl_sfr_out.dcm_en;
-            ph_ev = ph_mch && pwm_ctrl_sfr_out.phm_en;
-            of_ev = of_mch && pwm_ctrl_sfr_out.ofm_en;
+         pr_mch = (q_tmr === q_pr_val);
+         dc_mch = (q_tmr === q_dc_val);
+         ph_mch = (q_tmr === q_ph_val);
+         of_mch = (q_tmr === q_of_val);
+         if(tb_rst_n) begin
+            pr_ev = q_pr_ev && pwm_ctrl_sfr_out.prm_en;
+            dc_ev = q_dc_ev && pwm_ctrl_sfr_out.dcm_en;
+            ph_ev = q_ph_ev && pwm_ctrl_sfr_out.phm_en;
+            of_ev = q_of_ev && pwm_ctrl_sfr_out.ofm_en;
          end
       endfunction : update_match_event_outputs
 
       function void update_pwm_out();
          bit pwm_val;
 
-         pwm_val = q_pwm_out; //Retain the old value if no change is needed
-         if(pwm_ctrl_sfr_out.on && tb_rst_n && q_clk_en) begin
+         if(tb_rst_n) begin
             //Compute the new pwm output value
-            if(q_rst_bit | (tmr === q_dc_val) | (q_dc_val <= q_ph_val))
+            if((rst_bit & q_rst_bit) | dc_mch | (q_dc_val <= q_ph_val))
                pwm_val = 0;
-            else if(tmr == q_ph_val)
+            else if(ph_mch)
                pwm_val = 1;
+            else
+               pwm_val = q_pwm_out; //Pass the old value if no change is needed
          end
          //assign the output of the model the value from last step
-         pwm_out = (pwm_val ^ pwm_ctrl_sfr_out.pol) & pwm_ctrl_sfr_out.oen;
+         pwm_out = pwm_val;
+         pwm_out_port = (q_pwm_out ^ pwm_ctrl_sfr_out.pol) & pwm_ctrl_sfr_out.oen;
       endfunction : update_pwm_out
 
       function void update_sfr_field_values();
-        rst_bit    = pwm_ctrl_sfr_out.rst;
-        ld_bit     = pwm_ctrl_sfr_out.ld;
-        ld_trg_bit = pwm_ctrl_sfr_out.ld_trg;
-         if(q_clk_en & pwm_ctrl_sfr_out.on) begin
-            if(pwm_ctrl_sfr_out.ld_trg & pr_mch) begin
-               pr_val = pwm_cfg0_sfr_out.pr;
-               dc_val = pwm_cfg0_sfr_out.dc;
-               ph_val = pwm_cfg1_sfr_out.ph;
-               of_val = pwm_cfg1_sfr_out.of;
-            end
-         end
+         rst_bit    = pwm_ctrl_sfr_out.rst;
+         ld_bit     = pwm_ctrl_sfr_out.ld;
+         ld_trg_bit = pwm_ctrl_sfr_out.ld_trg;
       endfunction : update_sfr_field_values
+
+      function void update_shadow_buffers();
+         if(pwm_ctrl_sfr_out.ld_trg & (q_tmr === q_pr_val)) begin
+            pr_val = pwm_cfg0_sfr_out.pr;
+            dc_val = pwm_cfg0_sfr_out.dc;
+            ph_val = pwm_cfg1_sfr_out.ph;
+            of_val = pwm_cfg1_sfr_out.of;
+         end
+      endfunction : update_shadow_buffers
 
       function void update_hw_up_out();
          hw_up_pwm_ctrl = {
             of_mch, ph_mch, dc_mch, pr_mch, 4'b0,
             8'b0,
             8'b0,
-            3'b0, (ld_trg_bit & q_pr_mch), pwm_ctrl_sfr_out.rd, q_ld_bit, q_rst_bit, 1'b0
+            3'b0, (ld_trg_bit & q_pr_mch), pwm_ctrl_sfr_out.rd, q_ld_bit, (rst_bit & q_rst_bit), 1'b0
          };
          hw_up_pwm_tmr  = {16'b0,{16{pwm_ctrl_sfr_out.rd}}};
          hw_up_pwm_cfg0 = '0;
@@ -370,13 +385,14 @@ module pwm_nbit_v1_tb#(
       
       function void update_hw_val_out();
          hw_val_pwm_ctrl = 32'hF000_0000;
-         hw_val_pwm_tmr  = {16'b0,tmr};
+         hw_val_pwm_tmr  = {16'b0,q_tmr};
          hw_val_pwm_cfg0 = '0;
          hw_val_pwm_cfg1 = '0;
       endfunction : update_hw_val_out
 
       function void update_combo_logic();
          update_sfr_field_values();
+         update_shadow_buffers();
          update_timer();
          update_match_event_outputs();
          update_pwm_out();
@@ -400,7 +416,8 @@ module pwm_nbit_v1_tb#(
          dbg_ph_ev            = ph_ev;
          dbg_of_ev            = of_ev;
          dbg_pwm_out          = pwm_out;
-         dbg_clk_en           = clk_en;
+         dbg_pwm_out_port     = pwm_out_port;
+         //dbg_clk_en           = clk_en;
          dbg_rst_bit          = rst_bit;
          dbg_ld_bit           = ld_bit;
          dbg_ld_trg_bit       = ld_trg_bit;
@@ -430,16 +447,81 @@ module pwm_nbit_v1_tb#(
          dbg_q_dc_mch         = q_dc_mch;
          dbg_q_ph_mch         = q_ph_mch;
          dbg_q_of_mch         = q_of_mch;
-         dbg_q_clk_en         = q_clk_en;
+         //dbg_q_clk_en         = q_clk_en;
       endfunction : debug_wfm_signals
 
    endclass : model_pwm_c
 
-   class pwm_tests_c;
-      
-      
+   class pwm_std_tests_c;
 
-   endclass : pwm_tests_c 
+      function void check_outputs(logic[DATA_WIDTH-1:0] dut_out, logic[DATA_WIDTH-1:0] expected, string sig_name);
+         if(dut_out !== expected) begin
+            errors++;
+            $display("ERROR on %s!!! -> Time %0t: expected=%0h, dut_out=%0h",sig_name, $time(), expected, dut_out);
+         end
+
+         test_count++; //increment test_count for each test
+      endfunction : check_outputs
+
+      function void report_passrate();
+         $display("Pass Rate: %3.2f%%",((test_count-errors)/real'(test_count))*100);
+         //After each report clear the number of tests and errors
+         test_count = 0;
+         errors = 0;
+      endfunction : report_passrate
+      
+      task reset_test_seq();
+         //TODO IMPLEMENT
+      endtask : reset_test_seq
+
+
+      task base_functionality_test_seq(
+         bit [DATA_WIDTH-1:0]    pwm_ctrl_value,
+         bit [DATA_WIDTH-1:0]    pwm_tmr_value,
+         bit [DATA_WIDTH-1:0]    pwm_cfg0_value,
+         bit [DATA_WIDTH-1:0]    pwm_cfg1_value,
+         model_pwm_c             mod
+         );
+         logic [2:0] clk_src;
+         int unsigned period;
+
+         clk_src = pwm_ctrl_value[10:8];
+         period = pwm_cfg0_value[15:0];
+
+         //Disable the module
+         front_door_write_sfr(0, 32'h0000_0000);
+         @cb;
+
+         //Update the clock source before enabling the module to avoid clock glithes
+         front_door_write_sfr(0, {21'b0,clk_src,8'b0});
+         @cb;
+
+         //Update the module SFRs
+         front_door_write_sfr(1, pwm_tmr_value);
+         front_door_write_sfr(2, pwm_cfg0_value);
+         front_door_write_sfr(3, pwm_cfg1_value);
+         front_door_write_sfr(0, pwm_ctrl_value);
+         
+         //Run the scenario for approx. 10 PWM periods
+         repeat(10*period) begin
+            @cb;
+            check_outputs(dut_pwm_out, mod.pwm_out_port, "pwm_out");
+            check_outputs({dut_of_match_event, dut_ph_match_event, dut_dc_match_event, dut_pr_match_event}, 
+                          {mod.of_ev, mod.ph_ev, mod.dc_ev, mod.pr_ev}, "events outputs");
+            check_outputs(dut_hw_up_pwm_ctrl, mod.hw_up_pwm_ctrl, "hw_up_pwm_ctrl");
+            check_outputs(dut_hw_up_pwm_tmr,  mod.hw_up_pwm_tmr,  "hw_up_pwm_tmr");
+            check_outputs(dut_hw_up_pwm_cfg0, mod.hw_up_pwm_cfg0, "hw_up_pwm_cfg0");
+            check_outputs(dut_hw_up_pwm_cfg1, mod.hw_up_pwm_cfg1, "hw_up_pwm_cfg1");
+            check_outputs(dut_hw_val_pwm_ctrl, mod.hw_val_pwm_ctrl, "hw_val_pwm_ctrl");
+            check_outputs(dut_hw_val_pwm_tmr,  mod.hw_val_pwm_tmr,  "hw_val_pwm_tmr");
+            check_outputs(dut_hw_val_pwm_cfg0, mod.hw_val_pwm_cfg0, "hw_val_pwm_cfg0");
+            check_outputs(dut_hw_val_pwm_cfg1, mod.hw_val_pwm_cfg1, "hw_val_pwm_cfg1");
+         end
+         report_passrate();
+
+      endtask : base_functionality_test_seq
+
+   endclass : pwm_std_tests_c 
 
    //Define a clocking block for the input signals
    // Clocking block
@@ -500,23 +582,49 @@ module pwm_nbit_v1_tb#(
       endcase
    end
 
+   always @(negedge tb_dut_clk) begin
+      enable_model_clk <= tb_clk_en && pwm_ctrl_sfr_out.on;
+   end
+   assign tb_model_clk = tb_dut_clk & enable_model_clk;
+
+   //Declare the model in the global space
+   model_pwm_c model = new();
    //Verification model update logic
    initial begin
-      model_pwm_c model = new();
-      forever begin
-         @(posedge tb_dut_clk);
-         model.update_clk_posedge();
-         #1ns;
-         model.update_combo_logic();
-         @(negedge tb_dut_clk);
-         model.update_clk_negedge();
-         #1ns;
-         model.update_clk_gate();
-      end
+      fork
+         begin
+            forever begin
+               @(posedge tb_model_clk);
+               model.update_clk_posedge();
+               // #1ns;
+               // model.update_combo_logic();
+               //@(negedge tb_dut_clk);
+               //model.update_clk_negedge();
+               //#1ns;
+               //model.update_clk_gate();
+            end
+         end
+         begin
+            forever begin
+               @(posedge tb_dut_clk);
+               #1ns;
+               model.update_combo_logic();
+            end
+         end
+         begin
+            forever begin
+               @(posedge tb_clk);
+               #1ns;
+               model.update_sfr_field_values();
+               model.update_match_event_outputs();
+            end
+         end
+      join
    end
 
    //Run the tests
    initial begin
+      pwm_std_tests_c test_sequence = new();
 
       //Tie the clock enable and reset for the DUT to 1
       tb_rst_n       <= 1'b1;
@@ -529,12 +637,101 @@ module pwm_nbit_v1_tb#(
 
       @cb;
 
-      front_door_write_sfr(2, 32'h0004_0008);
-      front_door_write_sfr(3, 32'h0005_0001);
-      front_door_write_sfr(0, 32'h0F00_0141);
-      front_door_write_sfr(0, 32'h0F00_0151);
+      $display("//+--------------------------------------------------------------+//");
+      $display("//|                       Reset Test Start                       |//");
+      $display("//+--------------------------------------------------------------+//");
+      test_sequence.reset_test_seq();
 
-      #100us;
+      $display("//+--------------------------------------------------------------+//");
+      $display("//|                   Clock Gating Test Start                    |//");
+      $display("//+--------------------------------------------------------------+//");
+      //test_sequence.clock_gating_test();
+
+      $display("//+--------------------------------------------------------------+//");
+      $display("//|                 Functionality Tests Start                    |//");
+      $display("//+--------------------------------------------------------------+//");
+      
+
+      //Test 1 
+      //Test shadow buffers load, standard PWM output and standard PWM events
+      test_sequence.base_functionality_test_seq(
+         32'h0F00_0051, //Events enabled, clksrc=sys, oen, ld buff, on
+         32'h0000_0000, //TMR = 0
+         32'h0004_0008, //DC = 4, PR = 8
+         32'h0005_0001, //OF = 5, PH = 1
+         model
+         );
+
+      //Test 2
+      //Test timer load and PWM duty cycle 50%
+      test_sequence.base_functionality_test_seq(
+         32'h0F00_0155, //Events enabled, clksrc=sys_div2, oen, ld tmr, ld buff, on
+         32'h0000_FFFA, //TMR = MAX - 5
+         32'h0005_000A, //DC = 5, PR = 10
+         32'hFFFC_0000, //OF = FFFC, PH = 0
+         model
+         );
+
+      //Test 3
+      //Test register reset and no events enabled
+      test_sequence.base_functionality_test_seq(
+         32'h0000_0043, //clksrc=sys, oen, rst, on
+         32'h0000_0005, //TMR = 5
+         32'h0005_000A, //DC = 5, PR = 10
+         32'h0000_0000, //OF = 0, PH = 0
+         model
+         );
+
+      //Test 4
+      //Test register read and inverted polarity
+      test_sequence.base_functionality_test_seq(
+         32'h0300_04D1, //PR,DC event enabled, clksrc=sys_div16, polarity inverted, oen, ld_trg, on
+         32'h0000_0000, //TMR = 0
+         32'h0001_0003, //DC = 1, PR = 3
+         32'h0002_0000, //OF = 0, PH = 0
+         model
+         );
+
+      //Test 5
+      //Test corner case DC < PH, and invalid clock selection bits
+      test_sequence.base_functionality_test_seq(
+         32'h0F00_0751, //Events enabled, clksrc=invalid, oen, ld_trg, on
+         32'h0000_0002, //TMR = 2
+         32'h0004_0006, //DC = 4, PR = 6
+         32'h0001_0002, //OF = 1, PH = 2
+         model
+         );
+
+      //Test 6
+      //Test corner case DC > PR
+      test_sequence.base_functionality_test_seq(
+         32'h0F00_0351, //Events enabled, clksrc=sys_div8, oen, ld_trg, on
+         32'h0000_0000, //TMR = 0
+         32'h000A_0009, //DC = 10, PR = 9
+         32'h0009_0005, //OF = 1, PH = 5
+         model
+         );
+
+      //Test 7
+      //Test corner case PH > PR
+      test_sequence.base_functionality_test_seq(
+         32'h0F00_0051, //Events enabled, clksrc=sys, oen, ld_trg, on
+         32'h0000_0000, //TMR = 0
+         32'h0006_0007, //DC = 6, PR = 7
+         32'h0000_0009, //OF = 0, PH = 9
+         model
+         );
+
+      //Test 8
+      //Test output disabled and read
+      test_sequence.base_functionality_test_seq(
+         32'h0F00_0111, //Events enabled, clksrc=sys_div2, oen, ld_trg, on
+         32'h0000_0000, //TMR = 0
+         32'h0006_0007, //DC = 4, PR = 6
+         32'h0000_0009, //OF = 4, PH = 1
+         model
+         );
+
       $display("Stopping simulation.");
       $finish;
    end
