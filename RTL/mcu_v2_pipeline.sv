@@ -1,0 +1,253 @@
+//######################################## Header ########################################
+//# Author: Vlad Rosu                                                                    #
+//# Description: Top file for the Pipeline MCU aka v2, containing all modules            #
+//########################################################################################
+
+module mcu_v2_pipeline #(
+   parameter ADDR_BUS_WIDTH            = 32,
+   parameter DATA_BUS_WIDTH            = 32,
+   parameter CPU_REG_FILE_ADDR_WIDTH   = 5
+)(
+   //    Input ports definition
+   input                   sys_clk,
+   input                   sys_rst_n
+);
+
+   //==========================
+   // Packages and defines
+   //==========================
+
+   //==========================
+   // Local Parameters
+   //==========================
+   localparam logic [ADDR_WIDTH-1:0] PWM0_BASE_ADDR = 32'hFFFFF824;
+   localparam logic [ADDR_WIDTH-1:0] PWM1_BASE_ADDR = 32'hFFFFF834;
+   localparam logic [ADDR_WIDTH-1:0] PWM2_BASE_ADDR = 32'hFFFFF844;
+
+   //==========================
+   // Wire declarations
+   //==========================
+   //CPU
+   logic [DATA_BUS_WIDTH-1:0] pfm_rd_instr;
+   logic [DATA_BUS_WIDTH-1:0] dfm_rd_data;
+   logic [ADDR_BUS_WIDTH-1:0] pfm_req_addr;
+   logic [ADDR_BUS_WIDTH-1:0] cpu_req_addr;
+   logic                      cpu_wr_en;
+   logic [DATA_BUS_WIDTH-1:0] cpu_wr_data;
+   // Memory Map Decoder
+   logic                      en_mem_sfr;
+   logic                      en_mem_io;
+   logic                      en_mem_undef;
+   logic                      en_mem_dfm;
+   logic                      en_mem_pfm;
+   //PWM0
+   logic [DATA_BUS_WIDTH-1:0] pwm0_sfr_rd_bus;
+   logic                      pwm0_pr_if;
+   logic                      pwm0_dc_if;
+   logic                      pwm0_ph_if;
+   logic                      pwm0_of_if;
+   logic                      pwm0_out;
+   //PWM1
+   logic [DATA_BUS_WIDTH-1:0] pwm1_sfr_rd_bus;
+   logic                      pwm1_pr_if;
+   logic                      pwm1_dc_if;
+   logic                      pwm1_ph_if;
+   logic                      pwm1_of_if;
+   logic                      pwm1_out;
+   //PWM2
+   logic [DATA_BUS_WIDTH-1:0] pwm2_sfr_rd_bus;
+   logic                      pwm2_pr_if;
+   logic                      pwm2_dc_if;
+   logic                      pwm2_ph_if;
+   logic                      pwm2_of_if;
+   logic                      pwm2_out;
+   
+
+   
+  
+   logic [DATA_BUS_WIDTH-1:0] dfm_rd_data;
+   logic [DATA_BUS_WIDTH-1:0] io_rd_bus;
+   logic [DATA_BUS_WIDTH-1:0] sfr_rd_bus;
+   logic [DATA_BUS_WIDTH-1:0] sys_rd_bus;
+   
+   
+   //==========================
+   // Flip-flop declarations
+   //==========================
+
+
+
+   //==========================
+   // CPU Instance
+   //==========================
+   assign sys_rd_bus =  en_mem_dfm ? dfm_rd_data :
+                        en_mem_io  ? io_rd_bus   :
+                        en_mem_sfr ? sfr_rd_bus  :
+                                     'x          ; //TODO for now propagate X but maybe it is a good idea to propagate 0's instead
+
+   cpu_pipeline_v2 #(
+      .ADDR_WIDTH(ADDR_BUS_WIDTH),
+      .DATA_WIDTH(DATA_BUS_WIDTH),
+      .REG_FILE_ADDR_WIDTH(CPU_REG_FILE_ADDR_WIDTH)
+   ) cpu(
+      //    Input ports definition
+      .sys_clk       ( sys_clk                  ),
+      .sys_rst_n     ( sys_rst_n                ),
+      .pfm_rd_instr  ( pfm_rd_instr             ),
+      .dfm_rd_data   ( sys_rd_bus               ),
+      //    Output ports definition
+      .pfm_req_addr  ( pfm_req_addr             ), //FIXME maybe can add HW protection for end of memory by wiring MSB bit of the pfm_+req addr to the memory to 0
+      .dfm_req_addr  ( cpu_req_addr             ),
+      .dfm_wr_en     ( cpu_wr_en                ),
+      .dfm_wr_data   ( cpu_wr_data              )
+   );
+
+   assign dfm_wr_en = cpu_wr_en & en_mem_dfm;
+   assign sfr_wr_en = cpu_wr_en & en_mem_sfr;
+   assign io_wr_en  = cpu_wr_en & en_mem_io;
+
+   //==========================
+   // Memory Map Decoder Instance
+   //==========================
+   mem_map_dec mem_map_dec(
+      //    Input ports definition
+      .sys_address   ( cpu_req_addr             ),
+      //    Output ports definition
+      .en_mem_sfr    ( en_mem_sfr               ),
+      .en_mem_io     ( en_mem_io                ),
+      .en_mem_undef  ( en_mem_undef             ),
+      .en_mem_dfm    ( en_mem_dfm               ),
+      .en_mem_pfm    ( en_mem_pfm               )
+   );
+
+   //==========================
+   // PFM Instance
+   //==========================
+   // nvm_mem #(
+   //    .MEM_ADDR_WIDTH(ADDR_BUS_WIDTH),
+   //    .MEM_DATA_WIDTH(DATA_BUS_WIDTH)
+   // ) memory(
+   //    //    Input ports
+   //    .clk           ( sys_clk                     ),
+   //    .we            ( mem_wr_en                   ),
+   //    .addr          ( mem_addr                    ),
+   //    .wd            ( mem_data_in                 ),
+   //    //    Output ports
+   //    .rd            ( mem_data_out                )
+   // );
+
+   //==========================
+   // DFM Instance
+   //==========================
+
+   //==========================
+   // Prescaller Instance
+   //==========================
+   clk_prescaller_v1 #(
+      .DIV_RESOLUTION(4)
+   ) prescaller(
+      //    Input ports definition
+      .sys_clk       ( sys_clk                  ),
+      .sys_clk_en    (                 ), //TODO need to connect with low power mode
+      .sys_rst_n     ( sys_rst_n                ),
+      //    Output ports definition
+      .pclk_out      (  ) //TODO need to create interface for the clock tree
+   );
+
+   //==========================
+   // DCO Instance
+   //==========================
+
+   //==========================
+   // TMR0 Instance
+   //==========================
+
+   //==========================
+   // TMR1 Instance
+   //==========================
+
+   //==========================
+   // PWM0 Instance
+   //==========================
+   module pwm_16bit_v1 #(
+      .DATA_WIDTH(DATA_BUS_WIDTH),
+      .ADDR_WIDTH(ADDR_BUS_WIDTH),
+      .BASE_ADDR(PWM0_BASE_ADDR),
+      .N(16)
+   ) pwm0_16bit(
+      //    Input ports definition
+      .sys_clk       ( sys_clk                  ),
+      .sys_clk_div   (  ), //TODO wire this
+      .sys_clk_en    (  ), //TODO wire this
+      .sys_rst_n     ( sys_rst_n                ),
+      .sys_addr      ( cpu_req_addr             ),
+      .sys_wr_en     ( sfr_wr_en                ),
+      .sys_sw_value  ( cpu_wr_data              ),
+      //    Output ports definition
+      .sfr_rd_dout   ( pwm0_sfr_rd_bus          ),
+      .pr_event      ( pwm0_pr_if               ),
+      .dc_event      ( pwm0_dc_if               ),
+      .ph_event      ( pwm0_ph_if               ),
+      .of_event      ( pwm0_of_if               ),
+      .pwm_out       ( pwm0_out                 )
+   );
+
+   //==========================
+   // PWM1 Instance
+   //==========================
+   module pwm_16bit_v1 #(
+      .DATA_WIDTH(DATA_BUS_WIDTH),
+      .ADDR_WIDTH(ADDR_BUS_WIDTH),
+      .BASE_ADDR(PWM1_BASE_ADDR),
+      .N(16)
+   ) pwm1_16bit(
+      //    Input ports definition
+      .sys_clk       ( sys_clk                  ),
+      .sys_clk_div   (  ), //TODO wire this
+      .sys_clk_en    (  ), //TODO wire this
+      .sys_rst_n     ( sys_rst_n                ),
+      .sys_addr      ( cpu_req_addr             ),
+      .sys_wr_en     ( sfr_wr_en                ),
+      .sys_sw_value  ( cpu_wr_data              ),
+      //    Output ports definition
+      .sfr_rd_dout   ( pwm1_sfr_rd_bus          ),
+      .pr_event      ( pwm1_pr_if               ),
+      .dc_event      ( pwm1_dc_if               ),
+      .ph_event      ( pwm1_ph_if               ),
+      .of_event      ( pwm1_of_if               ),
+      .pwm_out       ( pwm1_out                 )
+   );
+
+   //==========================
+   // PWM2 Instance
+   //==========================
+   module pwm_16bit_v1 #(
+      .DATA_WIDTH(DATA_BUS_WIDTH),
+      .ADDR_WIDTH(ADDR_BUS_WIDTH),
+      .BASE_ADDR(PWM2_BASE_ADDR),
+      .N(16)
+   ) pwm2_16bit(
+      //    Input ports definition
+      .sys_clk       ( sys_clk                  ),
+      .sys_clk_div   (  ), //TODO wire this
+      .sys_clk_en    (  ), //TODO wire this
+      .sys_rst_n     ( sys_rst_n                ),
+      .sys_addr      ( cpu_req_addr             ),
+      .sys_wr_en     ( sfr_wr_en                ),
+      .sys_sw_value  ( cpu_wr_data              ),
+      //    Output ports definition
+      .sfr_rd_dout   ( pwm2_sfr_rd_bus          ),
+      .pr_event      ( pwm2_pr_if               ),
+      .dc_event      ( pwm2_dc_if               ),
+      .ph_event      ( pwm2_ph_if               ),
+      .of_event      ( pwm2_of_if               ),
+      .pwm_out       ( pwm2_out                 )
+   );
+
+   //==========================
+   // SFR Bus //TODO wire this bus to the cpu where dfm_read_data is wired create a logic
+   //==========================
+   assign sfr_rd_bus = pwm0_sfr_rd_bus | pwm1_sfr_rd_bus | pwm2_sfr_rd_bus;
+
+
+endmodule : mcu_v2_pipeline

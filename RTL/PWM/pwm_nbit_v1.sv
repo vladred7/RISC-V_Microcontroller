@@ -1,7 +1,7 @@
 //######################################## Header ########################################
 //# Author: Vlad Rosu                                                                    #
-//# Description: Top module of the PWM n bit, this module will be used as a n bit        #
-//#              resolution generator for a pulse width modulated wave                   #
+//# Description: Module containing functionality of the PWM n bit, this module will be   #
+//#              used as a n bit resolution generator for a pulse width modulated wave   #
 //########################################################################################
 
 module pwm_nbit_v1 #(
@@ -86,8 +86,6 @@ module pwm_nbit_v1 #(
    logic                of_match_ff;
    logic                pwm_out_ff;
 
-   
-//TODO CLOCK SELECTION LOGIC BASE ON clk src bits in SFR (should I do this logic on the top module?)
    //==========================
    // Input Clock Gate Logic
    //==========================
