@@ -11,7 +11,7 @@ module pwm_16bit_v1 #(
 )(
    //    Input ports definition
    input                      sys_clk,
-   input             [3:0]    sys_clk_div, //TODO may want to use intarfaces for all clocks
+   input             [3:0]    sys_clk_div,
    input                      sys_clk_en,
    input                      sys_rst_n,
    input  [ADDR_WIDTH-1:0]    sys_addr,         //Address bus from CPU
@@ -42,7 +42,6 @@ module pwm_16bit_v1 #(
    //==========================
    // Wire declarations
    //==========================
-
    pwm_ctrl_t  pwm_ctrl_sfr_out;
    pwm_tmr_t   pwm_tmr_sfr_out;
    pwm_cfg0_t  pwm_cfg0_sfr_out;

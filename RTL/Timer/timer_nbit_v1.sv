@@ -1,6 +1,6 @@
 //######################################## Header ########################################
 //# Author: Vlad Rosu                                                                    #
-//# Description: Top module of the Timer n bit, this module will be used as a n bit      #
+//# Description: Module containing logic of the Timer n bit, this will be used as a n bit#
 //#              resolution timer with trigger and interrupt signal generation           #
 //########################################################################################
 

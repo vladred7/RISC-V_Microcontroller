@@ -1,7 +1,7 @@
 //######################################## Header ########################################
 //# Author: Vlad Rosu                                                                    #
-//# Description: Top module of the Digital Controlled Oscillator with a resolution of N  #
-//#              bits                                                                    #
+//# Description: Module containing functionality of the of the Digital Controlled        #
+//#              Oscillator with a resolution of N bits                                  #
 //########################################################################################
 
 module dco_nbit_v1 #(
@@ -48,7 +48,6 @@ module dco_nbit_v1 #(
    logic [N-1:0]        counter_ff;
    logic                dco_clk_out_ff;
    
-//TODO CLOCK SELECTION LOGIC BASE ON clk src bits in SFR (should I do this logic on the top module?)
    //==========================
    // Input Clock Gate Logic
    //==========================
