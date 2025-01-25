@@ -245,7 +245,6 @@ module pwm_nbit_v1_tb#(
       release pwm_cfg1_sfr.sfr_value_ff;
    endtask : back_door_write_sfr
 
-   //TODO renunta la abordarea cu clase si fa golden model (mai rapid)
    class model_pwm_c;
       //Class Properties
       //IP outputs
@@ -343,10 +342,6 @@ module pwm_nbit_v1_tb#(
          q_ph_mch     = ph_mch;
          q_of_mch     = of_mch;
       endfunction : update_clk_posedge
-
-      function void update_reset();
-         //TODO IMPLEMENT
-      endfunction : update_reset
 
       function void update_timer();
          if(tb_rst_n) begin
@@ -552,7 +547,7 @@ module pwm_nbit_v1_tb#(
          front_door_write_sfr(0, 32'h0000_0000);
          @cb;
 
-         //Update the clock source before enabling the module to avoid clock glithes
+         //Update the clock source before enabling the module to avoid clock glitches
          front_door_write_sfr(0, {21'b0,clk_src,8'b0});
          @cb;
 

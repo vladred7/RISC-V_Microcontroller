@@ -32,10 +32,10 @@ module tmr_32bit_v1 #(
    //==========================
    // Local Parameters
    //==========================
-   localparam logic [ADDR_WIDTH-1:0] TMR_CTRL_ADDR  =         BASE_ADDR;
-   localparam logic [ADDR_WIDTH-1:0] TMR_VAL_ADDR   = TMR_CTRL_ADDR + 4;
-   localparam logic [ADDR_WIDTH-1:0] TMR_MVAL0_ADDR =  TMR_VAL_ADDR + 4;
-   localparam logic [ADDR_WIDTH-1:0] TMR_MVAL1_ADDR =   TMR_M0_ADDR + 4;
+   localparam logic [ADDR_WIDTH-1:0] TMR_CTRL_ADDR  =          BASE_ADDR;
+   localparam logic [ADDR_WIDTH-1:0] TMR_VAL_ADDR   =  TMR_CTRL_ADDR + 4;
+   localparam logic [ADDR_WIDTH-1:0] TMR_MVAL0_ADDR =   TMR_VAL_ADDR + 4;
+   localparam logic [ADDR_WIDTH-1:0] TMR_MVAL1_ADDR = TMR_MVAL0_ADDR + 4;
 
    //==========================
    // Wire declarations

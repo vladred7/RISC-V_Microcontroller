@@ -20,12 +20,12 @@ module mcu_v2_pipeline #(
    //==========================
    // Local Parameters
    //==========================
-   localparam logic [ADDR_WIDTH-1:0] TMR0_BASE_ADDR = 32'hFFFFF804;
-   localparam logic [ADDR_WIDTH-1:0] TMR1_BASE_ADDR = 32'hFFFFF814;
-   localparam logic [ADDR_WIDTH-1:0] PWM0_BASE_ADDR = 32'hFFFFF824;
-   localparam logic [ADDR_WIDTH-1:0] PWM1_BASE_ADDR = 32'hFFFFF834;
-   localparam logic [ADDR_WIDTH-1:0] PWM2_BASE_ADDR = 32'hFFFFF844;
-   localparam logic [ADDR_WIDTH-1:0] DCO_BASE_ADDR  = 32'hFFFFF854;
+   localparam logic [ADDR_BUS_WIDTH-1:0] TMR0_BASE_ADDR = 32'hFFFFF804;
+   localparam logic [ADDR_BUS_WIDTH-1:0] TMR1_BASE_ADDR = 32'hFFFFF814;
+   localparam logic [ADDR_BUS_WIDTH-1:0] PWM0_BASE_ADDR = 32'hFFFFF824;
+   localparam logic [ADDR_BUS_WIDTH-1:0] PWM1_BASE_ADDR = 32'hFFFFF834;
+   localparam logic [ADDR_BUS_WIDTH-1:0] PWM2_BASE_ADDR = 32'hFFFFF844;
+   localparam logic [ADDR_BUS_WIDTH-1:0] DCO_BASE_ADDR  = 32'hFFFFF854;
 
    //==========================
    // Wire declarations
@@ -83,7 +83,6 @@ module mcu_v2_pipeline #(
 
    
   
-   logic [DATA_BUS_WIDTH-1:0] dfm_rd_data;
    logic [DATA_BUS_WIDTH-1:0] io_rd_bus;
    logic [DATA_BUS_WIDTH-1:0] sfr_rd_bus;
    logic [DATA_BUS_WIDTH-1:0] sys_rd_bus;
@@ -200,7 +199,7 @@ module mcu_v2_pipeline #(
    tmr_32bit_v1 #(
       .DATA_WIDTH(DATA_BUS_WIDTH),
       .ADDR_WIDTH(ADDR_BUS_WIDTH),
-      .BASE_ADDR(TMR0_BASE_ADDR)
+      .BASE_ADDR(TMR0_BASE_ADDR),
       .N(32)
    ) tmr0_32bit(
       //    Input ports definition
@@ -224,7 +223,7 @@ module mcu_v2_pipeline #(
    tmr_32bit_v1 #(
       .DATA_WIDTH(DATA_BUS_WIDTH),
       .ADDR_WIDTH(ADDR_BUS_WIDTH),
-      .BASE_ADDR(TMR1_BASE_ADDR)
+      .BASE_ADDR(TMR1_BASE_ADDR),
       .N(32)
    ) tmr1_32bit(
       //    Input ports definition

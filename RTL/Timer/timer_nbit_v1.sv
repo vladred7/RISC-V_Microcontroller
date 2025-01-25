@@ -57,7 +57,7 @@ module timer_nbit_v1 #(
    logic [N-1:0]        tmr_value;
    logic                count_en_comb;
    logic                count_en;
-
+   
    //==========================
    // Flip-flop declarations
    //==========================
@@ -66,13 +66,14 @@ module timer_nbit_v1 #(
    logic                tmr_ld_dly_ff;
    logic [N-1:0]        tmr_value_ff;
    logic                count_en_ff;
+   logic                match0_ff;
+   logic                match1_ff;
+   logic                ovf_ff;
 
-//TODO CLOCK SELECTION LOGIC BASE ON clk src bits in SFR (should I do this logic on the top module?)
-//TODO ADD DCO as a supported clock source for the timer
    //==========================
-   // Sample fast signals in the pwm clock domain
+   // Sample fast signals in the tmr clock domain
    //==========================
-   always_ff @(posedge pwm_clk or negedge sys_rst_n) begin
+   always_ff @(posedge tmr_clk or negedge sys_rst_n) begin
       if(!sys_rst_n) begin
          tmr_rst_dly_ff <= 1'b0;
          tmr_ld_dly_ff  <= 1'b0;
@@ -162,7 +163,8 @@ module timer_nbit_v1 #(
 
    assign match0_event  = match0_ff;
    assign match1_event  = match1_ff;
-   assign ovf_event     = ovf_ff; 
+   assign ovf_event     = ovf_ff;
+
 
    //==========================
    //Hardware update bit fields logic
@@ -200,6 +202,7 @@ module timer_nbit_v1 #(
       tmr_hw_val_ctrl.start      = 1'b0;        //HC
       tmr_hw_val_ctrl.match0_f   = 1'b1;        //HS
       tmr_hw_val_ctrl.match1_f   = 1'b1;        //HS
+      tmr_hw_val_ctrl.ovf_f      = 1'b1;        //HS
       tmr_hw_val_val.tmr_val     = tmr_value;   //HS/HC
    end
 
