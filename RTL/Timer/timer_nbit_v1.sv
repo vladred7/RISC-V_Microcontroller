@@ -52,6 +52,8 @@ module timer_nbit_v1 #(
    tmr_match_val1_t     tmr_hw_val_match_val1;
    logic                tmr_rst_dly;
    logic                tmr_ld_dly;
+   logic                tmr_start_dly;
+   logic                tmr_stop_dly;
    logic                tmr_clk;
    logic   [N:0]        tmr_value_comb;         //Timer value combo has 1 more MSbit for OVF detection
    logic [N-1:0]        tmr_value;
@@ -64,6 +66,8 @@ module timer_nbit_v1 #(
    logic                sys_clk_en_sync;
    logic                tmr_rst_dly_ff;
    logic                tmr_ld_dly_ff;
+   logic                tmr_start_dly_ff;
+   logic                tmr_stop_dly_ff;
    logic [N-1:0]        tmr_value_ff;
    logic                count_en_ff;
    logic                match0_ff;
@@ -75,16 +79,22 @@ module timer_nbit_v1 #(
    //==========================
    always_ff @(posedge tmr_clk or negedge sys_rst_n) begin
       if(!sys_rst_n) begin
-         tmr_rst_dly_ff <= 1'b0;
-         tmr_ld_dly_ff  <= 1'b0;
+         tmr_rst_dly_ff    <= 1'b0;
+         tmr_ld_dly_ff     <= 1'b0;
+         tmr_start_dly_ff  <= 1'b0;
+         tmr_stop_dly_ff   <= 1'b0;
       end else begin
-         tmr_rst_dly_ff <= tmr_ctrl_reg.rst;
-         tmr_ld_dly_ff  <= tmr_ctrl_reg.ld;
+         tmr_rst_dly_ff    <= tmr_ctrl_reg.rst;
+         tmr_ld_dly_ff     <= tmr_ctrl_reg.ld;
+         tmr_start_dly_ff  <= tmr_ctrl_reg.start;
+         tmr_stop_dly_ff   <= tmr_ctrl_reg.stop;
       end
    end
 
    assign tmr_rst_dly = tmr_rst_dly_ff;
    assign tmr_ld_dly  = tmr_ld_dly_ff;
+   assign tmr_start_dly = tmr_start_dly_ff;
+   assign tmr_stop_dly  = tmr_stop_dly_ff;
 
    //==========================
    // Input Clock Gate Logic
@@ -120,7 +130,7 @@ module timer_nbit_v1 #(
       end
    end
    //Or between original value and flopped value to avoid delaying the operation by one tmr_clk
-   assign count_en = count_en_ff | count_en_comb;
+   assign count_en = (count_en_comb & (!count_en_ff)) | (count_en_comb & count_en_ff);
 
    //Timer Value Flop and combo logic
    always_comb begin
@@ -186,14 +196,14 @@ module timer_nbit_v1 #(
          //Read can be faster then tmr clock domain
       tmr_hw_up_ctrl.rd          = tmr_ctrl_reg.rd;
          //Count_en  is in the tmr domain clock that is slower t han system
-      tmr_hw_up_ctrl.stop        = tmr_ctrl_reg.stop & (!count_en);
-      tmr_hw_up_ctrl.start       = tmr_ctrl_reg.start & count_en;
+      tmr_hw_up_ctrl.stop        = tmr_stop_dly;
+      tmr_hw_up_ctrl.start       = tmr_start_dly;
          //These events are dependent on the timer clock domain that is always slower than the system.
       tmr_hw_up_ctrl.match0_f    = match0;      
       tmr_hw_up_ctrl.match1_f    = match1;
       tmr_hw_up_ctrl.ovf_f       = ovf;
          //Read can be faster then tmr clock domain
-      tmr_hw_up_val.tmr_val      = {(DATA_WIDTH-1){tmr_ctrl_reg.rd}};
+      tmr_hw_up_val.tmr_val      = {(DATA_WIDTH){tmr_ctrl_reg.rd}};
       //HW update value
       tmr_hw_val_ctrl.rst        = 1'b0;        //HC
       tmr_hw_val_ctrl.ld         = 1'b0;        //HC

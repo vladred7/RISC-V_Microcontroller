@@ -179,7 +179,7 @@ module timer_nbit_v1_tb#(
    logic                   dbg_ld_bit;
    logic                   dbg_start_bit;
    logic                   dbg_stop_bit;
-   logic          [N-1:0]  dbg_tmr;
+   logic            [N:0]  dbg_tmr;
    logic                   dbg_match0;
    logic                   dbg_match1;
    logic                   dbg_ovf;
@@ -188,7 +188,7 @@ module timer_nbit_v1_tb#(
    logic                   dbg_q_ld_bit;
    logic                   dbg_q_start_bit;
    logic                   dbg_q_stop_bit;
-   logic          [N-1:0]  dbg_q_tmr;
+   logic           [N-1:0] dbg_q_tmr;
    logic                   dbg_q_match0;
    logic                   dbg_q_match1;
    logic                   dbg_q_ovf;
@@ -251,7 +251,8 @@ module timer_nbit_v1_tb#(
       bit                  start_bit,  q_start_bit;
       bit                  stop_bit,   q_stop_bit;
       bit                  count,      q_count;
-      bit          [N:0]   tmr,        q_tmr; //note make the timer N+1 bits so it can detect overflow easier
+      bit          [N:0]   tmr; //note make the timer N+1 bits so it can detect overflow easier
+      bit        [N-1:0]   q_tmr;
       bit                  match0,     q_match0;
       bit                  match1,     q_match1;
       bit                  ovf,        q_ovf;
@@ -308,11 +309,11 @@ module timer_nbit_v1_tb#(
                                      q_count;
                         
          if(tb_rst_n) begin
-            if((rst_bit & q_rst_bit) | q_ovf)
+            if(q_rst_bit)
                tmr = '0;
-            else if(ld_bit) 
+            else if(q_ld_bit) 
                tmr = tmr_val_sfr_out.tmr_val;
-            else if(q_count | count)
+            else if((count & !q_count) | (count & q_count))
                tmr = q_tmr + 1;
             else
                tmr = q_tmr;
@@ -322,7 +323,7 @@ module timer_nbit_v1_tb#(
       function void update_match_event_outputs();
          match0 = (q_tmr === tmr_mval0_sfr_out);
          match1 = (q_tmr === tmr_mval1_sfr_out);
-         ovf    = (q_tmr[N] === 1'b1);
+         ovf    = (  tmr[N] === 1'b1);
          if(tb_rst_n) begin
             match0_ev = q_match0 && tmr_ctrl_sfr_out.match0_en;
             match1_ev = q_match1 && tmr_ctrl_sfr_out.match1_en;
@@ -342,9 +343,7 @@ module timer_nbit_v1_tb#(
             8'b0,
             8'b0,
             ovf, match1, match0, 5'b0,
-            (tmr_ctrl_sfr_out.start & (q_count | count)),
-            (tmr_ctrl_sfr_out.stop & (~(q_count | count))),
-            2'b0, tmr_ctrl_sfr_out.rd, q_ld_bit, (rst_bit & q_rst_bit), 1'b0
+            q_start_bit, q_stop_bit, 2'b0, tmr_ctrl_sfr_out.rd, q_ld_bit, q_rst_bit, 1'b0
          };
          hw_up_tmr_val   = {32{tmr_ctrl_sfr_out.rd}};
          hw_up_tmr_mval0 = '0;
@@ -353,7 +352,7 @@ module timer_nbit_v1_tb#(
       
       function void update_hw_val_out();
          hw_val_tmr_ctrl  = 32'h0000_E000;
-         hw_val_tmr_val   = q_tmr[31:0];
+         hw_val_tmr_val   = q_tmr;
          hw_val_tmr_mval0 = '0;
          hw_val_tmr_mval1 = '0;
       endfunction : update_hw_val_out
@@ -413,8 +412,8 @@ module timer_nbit_v1_tb#(
       endfunction : check_outputs
 
       function void check_all(model_tmr_c mod);
-         check_outputs({dut_match0_event, dut_match1_event, dut_ovf_event}, 
-                       {mod.match0_ev, mod.match1_ev, mod.ovf_ev}, "events outputs");
+         check_outputs({dut_ovf_event, dut_match1_event, dut_match0_event}, 
+                       {mod.ovf_ev, mod.match1_ev, mod.match0_ev}, "events outputs");
          check_outputs(dut_hw_up_tmr_ctrl  , mod.hw_up_tmr_ctrl  , "hw_up_tmr_ctrl");
          check_outputs(dut_hw_up_tmr_val   , mod.hw_up_tmr_val   , "hw_up_tmr_val");
          check_outputs(dut_hw_up_tmr_mval0 , mod.hw_up_tmr_mval0 , "hw_up_tmr_mval0");
@@ -443,7 +442,7 @@ module timer_nbit_v1_tb#(
          @(negedge tb_clk);
          tb_rst_n = 1'b1;
          //Synchronize after reset
-         @cb;
+         @(posedge tb_clk);
          //Check after reset
          check_all(mod);
       endtask : reset_test_seq
@@ -480,11 +479,36 @@ module timer_nbit_v1_tb#(
          front_door_write_sfr(0, tmr_ctrl_value);
          
          //Run the scenario for approx. 10 match events
-         if(clk_src > 5) clk_src = 0;
-         repeat(10*(2**clk_src)*period) begin
-            @cb;
-            check_all(mod);
-         end
+         if(clk_src > 4) clk_src = 0;
+
+         fork
+            //Checking Thread
+            begin
+               repeat(12*(2**clk_src)*period) begin
+                  @(posedge tb_clk);
+                  check_all(mod);
+               end
+            end
+            //Functional Thread
+            begin
+               bit m0 = 0;
+               bit m1 = 0;
+               while(1) begin
+                  @cb;
+                  if(mod.match0) m0 = 1;
+                  if(mod.match1) m1 = 1;
+                  if(m0 && m1) begin
+                     //First read the value of the timer
+                     front_door_write_sfr(0, (tmr_ctrl_sfr_out | {28'b0,1'b1,3'b0}));
+                     //Trigger a reset of the timer
+                     front_door_write_sfr(0, (tmr_ctrl_sfr_out | {30'b0,1'b1,1'b0}));
+                     //Clear the m0 and m1 to capture the next matches
+                     {m1,m0} = '0;
+                  end
+               end
+            end
+         join_any //Kill both thread after the first finish
+         
          report_passrate();
 
       endtask : base_functionality_test_seq
@@ -510,7 +534,6 @@ module timer_nbit_v1_tb#(
             //Update the clock source and reset timer
             front_door_write_sfr(0, {21'b0,i,8'b0});
             @cb;
-            //TODO update this test sequence
             //Update TMR configuration
             front_door_write_sfr(1, 32'h0000_0000);
             front_door_write_sfr(2, 32'h0000_0008);
@@ -525,7 +548,7 @@ module timer_nbit_v1_tb#(
 
             //Wait until the second match should have been occured
             repeat(4*(2**i)) begin
-               @cb;
+               @(posedge tb_clk);
                check_all(mod);
             end
 
@@ -534,7 +557,7 @@ module timer_nbit_v1_tb#(
 
             //Wait until the second match occurs and some time after
             repeat(16*(2**i)) begin
-               @cb;
+               @(posedge tb_clk);
                check_all(mod);
             end
 
@@ -594,18 +617,18 @@ module timer_nbit_v1_tb#(
    end
 
    //Divided Clocks Generator Thread
-   always @(posedge tb_clk) tb_clk_div <= tb_clk_div + 1;
+   always @(posedge tb_clk) tb_clk_div = tb_clk_div + 1;
 
    //Testbench clock is selected by the clksrc bits in the tmr_ctrl_sfr
    always @(*) begin
       case (tmr_ctrl_sfr_out.clksrc)
-         3'b000:  tb_dut_clk <= tb_clk;
-         3'b001:  tb_dut_clk <= tb_clk_div[0];
-         3'b010:  tb_dut_clk <= tb_clk_div[1];
-         3'b011:  tb_dut_clk <= tb_clk_div[2];
-         3'b100:  tb_dut_clk <= tb_clk_div[3];
-         //TODO implement a random DCO clk 3'b101:  tb_dut_clk <= 0;
-         default: tb_dut_clk <= tb_clk;
+         3'b000:  tb_dut_clk = tb_clk;
+         3'b001:  tb_dut_clk = tb_clk_div[0];
+         3'b010:  tb_dut_clk = tb_clk_div[1];
+         3'b011:  tb_dut_clk = tb_clk_div[2];
+         3'b100:  tb_dut_clk = tb_clk_div[3];
+         //TODO implement a random DCO clk 3'b101:  tb_dut_clk = 0;
+         default: tb_dut_clk = tb_clk;
       endcase
    end
 
@@ -627,17 +650,9 @@ module timer_nbit_v1_tb#(
          end
          begin
             forever begin
-               @(posedge tb_dut_clk);
-               #1ns;
-               model.update_combo_logic();
-            end
-         end
-         begin
-            forever begin
                @(posedge tb_clk);
                #1ns;
-               model.update_sfr_field_values();
-               model.update_match_event_outputs();
+               model.update_combo_logic();
             end
          end
       join
@@ -661,7 +676,7 @@ module timer_nbit_v1_tb#(
       $display("//+--------------------------------------------------------------+//");
       $display("//|                 Functionality Tests Start                    |//");
       $display("//+--------------------------------------------------------------+//");
-      //TODO update these test cases to match the timer behavior
+
       //Test 1 
       //Basic test for timer
       test_sequence.base_functionality_test_seq(
@@ -673,6 +688,64 @@ module timer_nbit_v1_tb#(
          );
 
       //Test 2
+      //Test back2back matches, with divided clock
+      test_sequence.base_functionality_test_seq(
+         32'h00E0_0283, //Events enabled, clksrc=sys_div4, start, rst, on
+         32'h0000_0000, //TMR = 0
+         32'h0000_0005, //MCH0 = 5
+         32'h0000_0005, //MCH1 = 5
+         model
+         );
+
+      //Test 3
+      //Test disable event 1, load timer, overflow, clock divided by 2
+      test_sequence.base_functionality_test_seq(
+         32'h00A0_0185, //MCH1 event disable, clksrc=sys_div2, start, ld, on
+         32'hFFFF_FFFA, //TMR = 0xFFFFFFFA
+         32'h0000_0006, //MCH0 = 6
+         32'h0000_0002, //MCH1 = 2
+         model
+         );
+
+      //Test 4
+      //Test back2back start&stop
+      test_sequence.base_functionality_test_seq(
+         32'h00E0_04C3, //Events enabled, clksrc=sys_div16, start, stop, rst, on
+         32'h0000_0003, //TMR = 3
+         32'h0000_0001, //MCH0 = 1
+         32'h0000_0002, //MCH1 = 2
+         model
+         );
+
+      //Test 5
+      //Test match disabled
+      test_sequence.base_functionality_test_seq(
+         32'h0000_0383, //Events enabled, clksrc=sys_div8, start, rst, on
+         32'hFFFF_FFFF, //TMR = max
+         32'h0000_000A, //MCH0 = 1
+         32'h0000_000F, //MCH1 = 2
+         model
+         );
+
+      //Test 6
+      //Test stop bit and out of range clock selection
+      test_sequence.base_functionality_test_seq(
+         32'h00E0_0741, //Events enabled, clksrc=sys_div8, stop, on
+         32'h0000_0000, //TMR = max
+         32'h0000_000A, //MCH0 = 10
+         32'h0000_000F, //MCH1 = 15
+         model
+         );
+
+      //Test 7
+      //Test module disable
+      test_sequence.base_functionality_test_seq(
+         32'h00E0_0082, //Events enabled, clksrc=sys, start, rst, off
+         32'h0000_0000, //TMR = 0
+         32'h0000_0004, //MCH0 = 4
+         32'h0000_0007, //MCH1 = 7
+         model
+         );
 
       $display("//+--------------------------------------------------------------+//");
       $display("//|                   Clock Gating Test Start                    |//");

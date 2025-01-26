@@ -239,7 +239,7 @@ module pwm_nbit_v1 #(
       pwm_hw_up_ctrl.phm_f    = ph_match;
       pwm_hw_up_ctrl.ofm_f    = of_match;
          //Read can be faster then pwm clock domain
-      pwm_hw_up_tmr.tval      = {(N-1){pwm_ctrl_reg.rd}};
+      pwm_hw_up_tmr.tval      = {(N){pwm_ctrl_reg.rd}};
       //HW update value
       pwm_hw_val_ctrl.rst     = 1'b0;           //HC
       pwm_hw_val_ctrl.ld      = 1'b0;           //HC

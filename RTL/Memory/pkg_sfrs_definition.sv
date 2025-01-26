@@ -23,8 +23,8 @@ package pkg_sfrs_definition;
    typedef struct packed {
       logic [ 7: 0] unimplemented_31_24;  //bits [31:24]
       logic         ovf_en;               //bits [   23]
-      logic         match0_en;            //bits [   22]
-      logic         match1_en;            //bits [   21]
+      logic         match1_en;            //bits [   22]
+      logic         match0_en;            //bits [   21]
       logic [ 4: 0] unimplemented_20_16;  //bits [20:16]
       logic         ovf_f;                //bits [   15]
       logic         match1_f;             //bits [   14]
