@@ -9,17 +9,27 @@ module mcu_v2_pipeline #(
    parameter CPU_REG_FILE_ADDR_WIDTH   = 5
 )(
    //    Input ports definition
-   input                   sys_clk,
-   input                   sys_rst_n
+   input                         sys_clk,
+   input                         sys_rst_n,
+   //    Output ports definition
+   output [DATA_BUS_WIDTH-1:0]   pfm_rd_instr,
+   output [DATA_BUS_WIDTH-1:0]   dfm_rd_data,
+   output [ADDR_BUS_WIDTH-1:0]   pfm_req_addr,
+   output [ADDR_BUS_WIDTH-1:0]   cpu_req_addr,
+   output                        cpu_wr_en,
+   output [DATA_BUS_WIDTH-1:0]   cpu_wr_data,
+   output [DATA_BUS_WIDTH-1:0]   sys_rd_bus
 );
 
    //==========================
    // Packages and defines
    //==========================
+   import pkg_sfrs_definition::*;
 
    //==========================
    // Local Parameters
    //==========================
+   localparam logic [ADDR_BUS_WIDTH-1:0] CHIP_BASE_ADDR = 32'hFFFFF800;
    localparam logic [ADDR_BUS_WIDTH-1:0] TMR0_BASE_ADDR = 32'hFFFFF804;
    localparam logic [ADDR_BUS_WIDTH-1:0] TMR1_BASE_ADDR = 32'hFFFFF814;
    localparam logic [ADDR_BUS_WIDTH-1:0] PWM0_BASE_ADDR = 32'hFFFFF824;
@@ -30,13 +40,22 @@ module mcu_v2_pipeline #(
    //==========================
    // Wire declarations
    //==========================
+   //System level wires
+   logic [DATA_BUS_WIDTH-1:0] io_rd_bus;
+   logic [DATA_BUS_WIDTH-1:0] sfr_rd_bus;
+   //logic [DATA_BUS_WIDTH-1:0] sys_rd_bus;
+   //Chip Sfrs
+   chip_ctrl_t                chip_ctrl_sfr_out;
+   chip_ctrl_t                chip_ctrl_sfr_rd;
+   logic                      chip_lp_mode;
+   logic [DATA_BUS_WIDTH-1:0] chip_sfr_rd_bus;
    //CPU
-   logic [DATA_BUS_WIDTH-1:0] pfm_rd_instr;
-   logic [DATA_BUS_WIDTH-1:0] dfm_rd_data;
-   logic [ADDR_BUS_WIDTH-1:0] pfm_req_addr;
-   logic [ADDR_BUS_WIDTH-1:0] cpu_req_addr;
-   logic                      cpu_wr_en;
-   logic [DATA_BUS_WIDTH-1:0] cpu_wr_data;
+   // logic [DATA_BUS_WIDTH-1:0] pfm_rd_instr;
+   // logic [DATA_BUS_WIDTH-1:0] dfm_rd_data;
+   // logic [ADDR_BUS_WIDTH-1:0] pfm_req_addr;
+   // logic [ADDR_BUS_WIDTH-1:0] cpu_req_addr;
+   // logic                      cpu_wr_en;
+   // logic [DATA_BUS_WIDTH-1:0] cpu_wr_data;
    // Memory Map Decoder
    logic                      en_mem_sfr;
    logic                      en_mem_io;
@@ -79,20 +98,40 @@ module mcu_v2_pipeline #(
    //DCO
    logic [DATA_BUS_WIDTH-1:0] dco_sfr_rd_bus;
    logic                      dco_clk;
-   
-
-   
   
-   logic [DATA_BUS_WIDTH-1:0] io_rd_bus;
-   logic [DATA_BUS_WIDTH-1:0] sfr_rd_bus;
-   logic [DATA_BUS_WIDTH-1:0] sys_rd_bus;
-   
-   
    //==========================
    // Flip-flop declarations
    //==========================
 
 
+   //==========================
+   // System SFRs
+   //==========================
+   sfr_module_v1 #(
+      .SFR_ADDR_WIDTH(ADDR_BUS_WIDTH),
+      .SFR_WIDTH(DATA_BUS_WIDTH),
+      .SFR_ADDRESS(CHIP_BASE_ADDR),
+      .IMPLEMENTED_BITS_MASK(32'h0000_0080),
+      .READABLE_BITS_MASK(32'h0000_0080),
+      .SW_UPDATABLE_BITS_MASK(32'h0000_0080),
+      .HW_UPDATABLE_BITS_MASK(32'h0000_0000)
+   ) chip_ctrl_sfr(
+      //    Input ports
+      .sys_clk          ( sys_clk            ),
+      .sys_clk_en       ( 1'b1               ), //CHIP SFRs are always enabled
+      .sys_rst_n        ( sys_rst_n          ),
+      .sys_addr         ( cpu_req_addr       ),
+      .sys_wr_en        ( sfr_wr_en          ),
+      .sfr_hw_upate     ( '0                 ),
+      .sfr_hw_value     ( '0                 ),
+      .sfr_sw_value     ( cpu_wr_data        ),
+      //    Output ports
+      .sfr_dout         ( chip_ctrl_sfr_out  ),
+      .sfr_rdonly_dout  ( chip_ctrl_sfr_rd   )
+   );
+
+   assign chip_lp_mode = chip_ctrl_sfr_out.lpm;
+   assign chip_sfr_rd_bus = chip_ctrl_sfr_rd;
 
    //==========================
    // CPU Instance
@@ -137,25 +176,39 @@ module mcu_v2_pipeline #(
       .en_mem_pfm    ( en_mem_pfm               )
    );
 
+   //TODO: For synthesis PFM needs a real ram implementation
    //==========================
    // PFM Instance
    //==========================
-   // nvm_mem #(
-   //    .MEM_ADDR_WIDTH(ADDR_BUS_WIDTH),
-   //    .MEM_DATA_WIDTH(DATA_BUS_WIDTH)
-   // ) memory(
-   //    //    Input ports
-   //    .clk           ( sys_clk                     ),
-   //    .we            ( mem_wr_en                   ),
-   //    .addr          ( mem_addr                    ),
-   //    .wd            ( mem_data_in                 ),
-   //    //    Output ports
-   //    .rd            ( mem_data_out                )
-   // );
+   nvm_mem #(
+      .MEM_ADDR_WIDTH(ADDR_BUS_WIDTH),
+      .MEM_DATA_WIDTH(DATA_BUS_WIDTH)
+   ) pfm(
+      //    Input ports
+      .clk           ( sys_clk                  ),
+      .we            ( 1'b0                     ), //TODO PFM should support write only on programming
+      .addr          ( pfm_req_addr             ), //TODO select only necessary bits (look in mem decoder)
+      .wd            ( cpu_wr_data              ),
+      //    Output ports
+      .rd            ( pfm_rd_instr             )
+   );
 
+   //TODO: For synthesis DFM needs a real ram implementation
    //==========================
    // DFM Instance
    //==========================
+   nvm_mem #(
+      .MEM_ADDR_WIDTH(ADDR_BUS_WIDTH),
+      .MEM_DATA_WIDTH(DATA_BUS_WIDTH)
+   ) dfm(
+      //    Input ports
+      .clk           ( sys_clk                  ),
+      .we            ( dfm_wr_en                ),
+      .addr          ( cpu_req_addr             ), //TODO select only necessary bits (look in mem decoder)
+      .wd            ( cpu_wr_data              ),
+      //    Output ports
+      .rd            ( dfm_rd_data              )
+   );
 
    //==========================
    // Prescaller Instance
@@ -165,7 +218,7 @@ module mcu_v2_pipeline #(
    ) prescaller(
       //    Input ports definition
       .sys_clk       ( sys_clk                  ),
-      .sys_clk_en    (                 ), //TODO need to connect with low power mode
+      .sys_clk_en    ( chip_lp_mode             ),
       .sys_rst_n     ( sys_rst_n                ),
       //    Output ports definition
       .pclk_out      ( sys_clk_div              )
@@ -183,7 +236,7 @@ module mcu_v2_pipeline #(
       //    Input ports definition
       .sys_clk       ( sys_clk                  ),
       .sys_clk_div   ( sys_clk_div              ),
-      .sys_clk_en    (  ), //TODO wire this
+      .sys_clk_en    ( chip_lp_mode             ),
       .sys_rst_n     ( sys_rst_n                ),
       .sys_addr      ( cpu_req_addr             ),
       .sys_wr_en     ( sfr_wr_en                ),
@@ -205,7 +258,7 @@ module mcu_v2_pipeline #(
       //    Input ports definition
       .sys_clk       ( sys_clk                  ),
       .sys_clk_div   ( {dco_clk, sys_clk_div}   ),
-      .sys_clk_en    (  ), //TODO wire this
+      .sys_clk_en    ( chip_lp_mode             ),
       .sys_rst_n     ( sys_rst_n                ),
       .sys_addr      ( cpu_req_addr             ),
       .sys_wr_en     ( sfr_wr_en                ),
@@ -229,7 +282,7 @@ module mcu_v2_pipeline #(
       //    Input ports definition
       .sys_clk       ( sys_clk                  ),
       .sys_clk_div   ( {dco_clk, sys_clk_div}   ),
-      .sys_clk_en    (  ), //TODO wire this
+      .sys_clk_en    ( chip_lp_mode             ),
       .sys_rst_n     ( sys_rst_n                ),
       .sys_addr      ( cpu_req_addr             ),
       .sys_wr_en     ( sfr_wr_en                ),
@@ -253,7 +306,7 @@ module mcu_v2_pipeline #(
       //    Input ports definition
       .sys_clk       ( sys_clk                  ),
       .sys_clk_div   ( sys_clk_div              ),
-      .sys_clk_en    (  ), //TODO wire this
+      .sys_clk_en    ( chip_lp_mode             ),
       .sys_rst_n     ( sys_rst_n                ),
       .sys_addr      ( cpu_req_addr             ),
       .sys_wr_en     ( sfr_wr_en                ),
@@ -279,7 +332,7 @@ module mcu_v2_pipeline #(
       //    Input ports definition
       .sys_clk       ( sys_clk                  ),
       .sys_clk_div   ( sys_clk_div              ),
-      .sys_clk_en    (  ), //TODO wire this
+      .sys_clk_en    ( chip_lp_mode             ),
       .sys_rst_n     ( sys_rst_n                ),
       .sys_addr      ( cpu_req_addr             ),
       .sys_wr_en     ( sfr_wr_en                ),
@@ -305,7 +358,7 @@ module mcu_v2_pipeline #(
       //    Input ports definition
       .sys_clk       ( sys_clk                  ),
       .sys_clk_div   ( sys_clk_div              ),
-      .sys_clk_en    (  ), //TODO wire this
+      .sys_clk_en    ( chip_lp_mode             ),
       .sys_rst_n     ( sys_rst_n                ),
       .sys_addr      ( cpu_req_addr             ),
       .sys_wr_en     ( sfr_wr_en                ),
@@ -320,10 +373,11 @@ module mcu_v2_pipeline #(
    );
 
    //==========================
-   // SFR Bus //TODO wire this bus to the cpu where dfm_read_data is wired create a logic
+   // SFR Bus
    //==========================
    assign sfr_rd_bus = pwm0_sfr_rd_bus | pwm1_sfr_rd_bus | pwm2_sfr_rd_bus |
-                       tmr0_sfr_rd_bus | tmr1_sfr_rd_bus | dco_sfr_rd_bus  ;
+                       tmr0_sfr_rd_bus | tmr1_sfr_rd_bus | dco_sfr_rd_bus  |
+                       chip_sfr_rd_bus ;
 
 
 endmodule : mcu_v2_pipeline

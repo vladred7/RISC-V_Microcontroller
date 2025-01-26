@@ -202,7 +202,7 @@ module pwm_nbit_v1 #(
    end
 
    always_ff @(posedge pwm_clk or negedge sys_rst_n) begin
-      if(!sys_clk) begin
+      if(!sys_rst_n) begin
          pwm_out_ff <= '0;
       end else begin
          pwm_out_ff <= pwm_out_comb;

@@ -33,7 +33,6 @@ module sfr_module_v1 #(
    // Wire declarations
    //==========================
    logic                   sfr_clk;
-   logic [SFR_WIDTH-1:0]   sfr_value_ff;
    logic [SFR_WIDTH-1:0]   hw_up;
    logic [SFR_WIDTH-1:0]   sfr_din;
    logic                   sfr_wen;

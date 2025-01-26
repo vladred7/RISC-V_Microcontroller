@@ -10,10 +10,8 @@ package pkg_sfrs_definition;
    //==========================
    typedef struct packed {
       logic [23: 0] unimplemented_31_8;   //bits [31: 8]
-      logic         sw_rst;               //bits [    7]
-      logic         unimplemented_6;      //bits [    6]
-      logic         lw_pwr;               //bits [    5]
-      logic [ 4: 0] unimplemented_4_0;    //bits [ 4: 0]
+      logic         lpm;                  //bits [    7]
+      logic [ 6: 0] unimplemented_6_0;    //bits [ 6: 0]
    } chip_ctrl_t;
 
 
