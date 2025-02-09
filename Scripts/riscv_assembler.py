@@ -93,6 +93,38 @@ register_map = {
      'T6' : '11111',      't6' : '11111',     'x31' : '11111'   # Temporary Register 6
 }
 
+# TODO don't forget about this, add support for implemented SFR
+# SFR address map
+sfr_space_start_addr = 0
+sfr_map = {
+    'CHIP_CTRL'         : '0',      'chip_ctrl'         : '0',  #
+    'TMR0_CTRL'         : '0',      'tmr0_ctrl'         : '0',  #
+    'TMR0_VAL'          : '0',      'tmr0_val'          : '0',  #
+    'TMR0_MATCH_VAL0'   : '0',      'tmr0_match_val0'   : '0',  #
+    'TMR0_MATCH_VAL1'   : '0',      'tmr0_match_val1'   : '0',  #
+    'TMR1_CTRL'         : '0',      'tmr1_ctrl'         : '0',  #
+    'TMR1_VAL'          : '0',      'tmr1_val'          : '0',  #
+    'TMR1_MATCH_VAL0'   : '0',      'tmr1_match_val0'   : '0',  #
+    'TMR1_MATCH_VAL1'   : '0',      'tmr1_match_val1'   : '0',  #
+    'PWM0_CTRL'         : '0',      'pwm0_ctrl'         : '0',  #
+    'PWM0_TMR'          : '0',      'pwm0_tmr'          : '0',  #
+    'PWM0_CFG0'         : '0',      'pwm0_cfg0'         : '0',  #
+    'PWM0_CFG1'         : '0',      'pwm0_cfg1'         : '0',  #
+    'PWM1_CTRL'         : '0',      'pwm1_ctrl'         : '0',  #
+    'PWM1_TMR'          : '0',      'pwm1_tmr'          : '0',  #
+    'PWM1_CFG0'         : '0',      'pwm1_cfg0'         : '0',  #
+    'PWM1_CFG1'         : '0',      'pwm1_cfg1'         : '0',  #
+    'PWM2_CTRL'         : '0',      'pwm2_ctrl'         : '0',  #
+    'PWM2_TMR'          : '0',      'pwm2_tmr'          : '0',  #
+    'PWM2_CFG0'         : '0',      'pwm2_cfg0'         : '0',  #
+    'PWM2_CFG1'         : '0',      'pwm2_cfg1'         : '0',  #
+    'DCO_CTRL'          : '0',      'dco_ctrl'          : '0',  #
+    'DCO_CNT'           : '0',      'dco_cnt'           : '0'   #
+}
+
+
+
+
 
 #+------------------------------------------------------------------------------------+#
 #| Function: bin2hex_32bit(string)                                                    |#
@@ -156,6 +188,28 @@ def strval2strbin(val_str,length):
 
     return bin_str
      
+
+#+------------------------------------------------------------------------------------+#
+#| Function: compute_signed_Nbit_ta(int, int, int)                                    |#
+#| Description: This function computes the difference between current PC and BTA/JTA  |#
+#|    (branch/jump target address) on N bit resolution                                |#
+#| Input:                                                                             |#
+#|    int - resolution in bits N                                                      |#
+#|    int - current PC address                                                        |#
+#|    int - BT/JT PC address                                                          |#
+#| Output:                                                                            |#
+#|    string - the hexadecimal signed Nbit value                                      |#
+#+------------------------------------------------------------------------------------+#
+def compute_signed_Nbit_ta(N, PC_current, target_addr):
+    #Bits selection mask based on operation resolution
+    mask = (2**N) - 1 
+    #Calculate the difference between the addresses
+    value = target_addr - PC_current
+    #Truncate restult to N LSbits
+    value &= mask
+    #Return the N bit value as a string in hexadecimal
+    return hex(value)
+
 
 #+------------------------------------------------------------------------------------+#
 #| Function: build_Rtype_instr(string)                                                |#
@@ -250,11 +304,17 @@ def build_Stype_instr(instr_line):
 #|    microcontroller                                                                 |#
 #| Input:                                                                             |#
 #|    string - an RISC-V assembly mnemonic (RV32I)                                    |#
+#|    int - current PC address                                                        |#
 #| Output:                                                                            |#
 #|    string - a binary instruction coded as a B-Type instruction for RISC-V 32bit    |#
 #+------------------------------------------------------------------------------------+#
-def build_Btype_instr(instr_line): #TODO this should be able to process a laber for the immediate
+def build_Btype_instr(instr_line, current_PC):
     immediate_field_length = 13
+    
+    #if the instruction contains a label, swap the label with the PC address
+    if(instr_line[3] in symbol_table):
+        #branch address is relative to the current PC
+        instr_line[3] = compute_signed_Nbit_ta(immediate_field_length, current_PC, symbol_table[instr_line[3]])
     
     imm_12_0  = strval2strbin(instr_line[3],immediate_field_length)
     
@@ -301,11 +361,17 @@ def build_Utype_instr(instr_line):
 #|    microcontroller                                                                 |#
 #| Input:                                                                             |#
 #|    string - an RISC-V assembly mnemonic (RV32I)                                    |#
+#|    int - current PC address                                                        |#
 #| Output:                                                                            |#
 #|    string - a binary instruction coded as a J-Type instruction for RISC-V 32bit    |#
 #+------------------------------------------------------------------------------------+#
-def build_Jtype_instr(instr_line):
+def build_Jtype_instr(instr_line, current_PC):
     immediate_field_length = 21
+    
+    #if the instruction contains a label, swap the label with the PC address
+    if(instr_line[2] in symbol_table):
+        #jump address is relative to the current PC
+        instr_line[2] = compute_signed_Nbit_ta(immediate_field_length, current_PC, symbol_table[instr_line[2]])
     
     imm_20_0  = strval2strbin(instr_line[2],immediate_field_length)
     
@@ -327,10 +393,11 @@ def build_Jtype_instr(instr_line):
 #|    function                                                                        |#
 #| Input:                                                                             |#
 #|    string - an RISC-V assembly mnemonic (RV32I)                                    |#
+#|    int - current PC address to be used for branch/jump instructions                |#
 #| Output:                                                                            |#
 #|    string - the binary instruction code for the specific assembly mnemonic         |#
 #+------------------------------------------------------------------------------------+#
-def translate_menmonic(instr_line):
+def translate_menmonic(instr_line, current_PC):
     instr_line = instr_line.replace(",", "")
     instr_line = instr_line.split()
     instr_type = instrcution_type[instr_line[0]]
@@ -342,11 +409,11 @@ def translate_menmonic(instr_line):
     elif(instr_type == 'S'):
         binary_instr = build_Stype_instr(instr_line)
     elif(instr_type == 'B'):
-        binary_instr = build_Btype_instr(instr_line)
+        binary_instr = build_Btype_instr(instr_line, current_PC)
     elif(instr_type == 'U'):
         binary_instr = build_Utype_instr(instr_line)
     elif(instr_type == 'J'):
-        binary_instr = build_Jtype_instr(instr_line)
+        binary_instr = build_Jtype_instr(instr_line, current_PC)
 
     return binary_instr
 
@@ -358,18 +425,19 @@ def translate_menmonic(instr_line):
 #| Output:                                                                            |#
 #+------------------------------------------------------------------------------------+#
 def main():
-
-   asm_file = open("assembly.asm", "r")
-   bin_file = open("machine_code.bin", "w")
-   hex_file = open("machine_code.hex", "w")
-   
-   with open("assembly.asm", "r")     as asm_file, \
-        open("machine_code.bin", "w") as bin_file, \
-        open("machine_code.hex", "w") as hex_file:
+    #Declare a pointer to the global string
+    global mnemonics
+    #Initialize PC with 0
+    PC = 0
     
+    #First Iteration
+    #1) Strip the assembly code of comments & empty lines & spaces
+    #2) Build the symbol table map
+    #3) TODO add support for data (data declaration) and text sections
+    with open("assembly.asm", "r") as asm_file:
         for line in asm_file:
             #Strip all whitespaces from the current line
-            line = line.strip() 
+            line = line.strip()
             #If the line is empty skip it
             if not line:
                 continue
@@ -377,14 +445,56 @@ def main():
             if line.startswith("#"):
                 continue
             #Remove the comments from the lines that contains instructions
-            instruction_line = line.split('#', 1)[0].strip()
+            line = line.split('#', 1)[0].strip()
+            
+            if line.endswith(":"): #if line is an label
+                symbol_table[line[:-1]] = PC #save the PC for the label
+                #Labels are not real intructions, that is why they should not increase the PC value, only save it
+            else: #if the line is not a label than it is an instruction
+                mnemonics = mnemonics + line + '\n'
+                #Update PC address
+                PC += 4
+
+    #Close the ASM code file:
+    asm_file.close()
+
+    #Split the code into a list of instructions
+    mnemonics = mnemonics.split('\n')
+    #Remove last empty string
+    mnemonics.remove('')
+    #Reinitialize the PC with 0 for the second iteration
+    PC = 0
+
+    #Second Iteration
+    #1) Convert the menmonics into machine code
+    #2) Generate the programming .bin/.hex files         
+    with open("machine_code.bin", "w") as bin_file, \
+         open("machine_code.hex", "w") as hex_file:
+      
+        for line in mnemonics:
             #Trasnslate the assembly instruction into binary machine code
-            bin_line = translate_menmonic(instruction_line)
+            bin_line = translate_menmonic(line, PC)
             #Transfrom the binary coded instruction in hexadecimal as well
             hex_line = bin2hex_32bit(bin_line)
             #Write the machine code files in their specific format binary/hex
             bin_file.write(bin_line + '\n')
             hex_file.write(hex_line + '\n')
-       
+            #Update PC
+            PC += 4
 
-main() #Execute the main()
+    #Close the .bin and .hex files:
+    bin_file.close()
+    hex_file.close()
+
+
+#+------------------------------------------------------------------------------------+#
+#|                                Global Variable Space                               |#
+#+------------------------------------------------------------------------------------+#
+#Declare the symbol table as a map (dictionary)
+symbol_table = {}
+#Declare a string in which the mnemonics will be stored
+mnemonics = ''
+
+
+#Execute the main()
+main() 
