@@ -3,12 +3,13 @@
 # Description: This script computes the conversion of the assembly mnemonics of the    #
 #              RV32I instruction set into machine code.                                #
 # Input: Any assembly file (.asm) that contains only RV32I instructions                #
-# Output: A binary/hex file containing the machine code                                #
+# Output: Two binary/hex file containing the machine code and data memory content      #
 ########################################################################################
 
 #TODOs
-#add support for asm directives
+#add support for all RV32I assembly directives
 #add support for pseudo-instructions
+#add protection for variables with the same name
 
 # RISC-V opcode dictionary
 opc = {
@@ -93,37 +94,37 @@ register_map = {
      'T6' : '11111',      't6' : '11111',     'x31' : '11111'   # Temporary Register 6
 }
 
-# TODO don't forget about this, add support for implemented SFR
+
 # SFR address map
-sfr_space_start_addr = 0
+#SFR map starts at address 0xFFFFF800
+#FIXME: Work around that speed up SFR programming by using only the 12 LSbits 
+#       of the SFR address in a SW instruction (SW immediate field is signed and 
+#       will extent the 12th bit up to the 32 bit position)
 sfr_map = {
-    'CHIP_CTRL'         : '0',      'chip_ctrl'         : '0',  #
-    'TMR0_CTRL'         : '0',      'tmr0_ctrl'         : '0',  #
-    'TMR0_VAL'          : '0',      'tmr0_val'          : '0',  #
-    'TMR0_MATCH_VAL0'   : '0',      'tmr0_match_val0'   : '0',  #
-    'TMR0_MATCH_VAL1'   : '0',      'tmr0_match_val1'   : '0',  #
-    'TMR1_CTRL'         : '0',      'tmr1_ctrl'         : '0',  #
-    'TMR1_VAL'          : '0',      'tmr1_val'          : '0',  #
-    'TMR1_MATCH_VAL0'   : '0',      'tmr1_match_val0'   : '0',  #
-    'TMR1_MATCH_VAL1'   : '0',      'tmr1_match_val1'   : '0',  #
-    'PWM0_CTRL'         : '0',      'pwm0_ctrl'         : '0',  #
-    'PWM0_TMR'          : '0',      'pwm0_tmr'          : '0',  #
-    'PWM0_CFG0'         : '0',      'pwm0_cfg0'         : '0',  #
-    'PWM0_CFG1'         : '0',      'pwm0_cfg1'         : '0',  #
-    'PWM1_CTRL'         : '0',      'pwm1_ctrl'         : '0',  #
-    'PWM1_TMR'          : '0',      'pwm1_tmr'          : '0',  #
-    'PWM1_CFG0'         : '0',      'pwm1_cfg0'         : '0',  #
-    'PWM1_CFG1'         : '0',      'pwm1_cfg1'         : '0',  #
-    'PWM2_CTRL'         : '0',      'pwm2_ctrl'         : '0',  #
-    'PWM2_TMR'          : '0',      'pwm2_tmr'          : '0',  #
-    'PWM2_CFG0'         : '0',      'pwm2_cfg0'         : '0',  #
-    'PWM2_CFG1'         : '0',      'pwm2_cfg1'         : '0',  #
-    'DCO_CTRL'          : '0',      'dco_ctrl'          : '0',  #
-    'DCO_CNT'           : '0',      'dco_cnt'           : '0'   #
+    'CHIP_CTRL'         : '0x800',      'chip_ctrl'         : '0x800',
+    'TMR0_CTRL'         : '0x804',      'tmr0_ctrl'         : '0x804',
+    'TMR0_VAL'          : '0x808',      'tmr0_val'          : '0x808',
+    'TMR0_MATCH_VAL0'   : '0x80C',      'tmr0_match_val0'   : '0x80C',
+    'TMR0_MATCH_VAL1'   : '0x810',      'tmr0_match_val1'   : '0x810',
+    'TMR1_CTRL'         : '0x814',      'tmr1_ctrl'         : '0x814',
+    'TMR1_VAL'          : '0x818',      'tmr1_val'          : '0x818',
+    'TMR1_MATCH_VAL0'   : '0x81C',      'tmr1_match_val0'   : '0x81C',
+    'TMR1_MATCH_VAL1'   : '0x820',      'tmr1_match_val1'   : '0x820',
+    'PWM0_CTRL'         : '0x824',      'pwm0_ctrl'         : '0x824',
+    'PWM0_TMR'          : '0x828',      'pwm0_tmr'          : '0x828',
+    'PWM0_CFG0'         : '0x82C',      'pwm0_cfg0'         : '0x82C',
+    'PWM0_CFG1'         : '0x830',      'pwm0_cfg1'         : '0x830',
+    'PWM1_CTRL'         : '0x834',      'pwm1_ctrl'         : '0x834',
+    'PWM1_TMR'          : '0x838',      'pwm1_tmr'          : '0x838',
+    'PWM1_CFG0'         : '0x83C',      'pwm1_cfg0'         : '0x83C',
+    'PWM1_CFG1'         : '0x840',      'pwm1_cfg1'         : '0x840',
+    'PWM2_CTRL'         : '0x844',      'pwm2_ctrl'         : '0x844',
+    'PWM2_TMR'          : '0x848',      'pwm2_tmr'          : '0x848',
+    'PWM2_CFG0'         : '0x84C',      'pwm2_cfg0'         : '0x84C',
+    'PWM2_CFG1'         : '0x850',      'pwm2_cfg1'         : '0x850',
+    'DCO_CTRL'          : '0x854',      'dco_ctrl'          : '0x854',
+    'DCO_CNT'           : '0x858',      'dco_cnt'           : '0x858' 
 }
-
-
-
 
 
 #+------------------------------------------------------------------------------------+#
@@ -165,6 +166,10 @@ def strval2strbin(val_str,length):
     #Remove the "`" that can be used as a prefix for x or h in hexadecimal
     val_str = val_str.replace("'", "")
     
+    #Test if the value is an SFR name and replace the name with the hex value
+    if val_str in sfr_map:
+        val_str = sfr_map[val_str]
+    
     #Test if the value is in hexadecimal and remove the prefix
     if val_str.startswith('0x') or val_str.startswith('0h'):
         val_str = val_str[2:]
@@ -184,7 +189,7 @@ def strval2strbin(val_str,length):
     
     #Test is the value can be represented on the specified number of bits
     if len(bin_str) > length:
-        raise ValueError(f"Value {dec_val} cannot fit in {length} bits length!")
+        raise ValueError(f"Assemble Error! Value {dec_val} cannot fit in {length} bits length!")
 
     return bin_str
      
@@ -253,6 +258,13 @@ def build_Itype_instr(instr_line):
         instr_line[2] = instr_line[2].split(sep='(')    #splitting third element in 2 elemnts
         instr_line = [instr_line[0],instr_line[1],instr_line[2][1],instr_line[2][0]] #reorder the elements in the initial string
     
+    #Verify if the immediate field is in the symbol_table
+    if instr_line[3] in symbol_table:
+        #Store address was calculated based on an offset provided by gp register
+        print(instr_line[3])
+        instr_line[3] = symbol_table[instr_line[3]]
+        print(instr_line[3])
+
     op        = opc[instr_line[0]]
     rd        = register_map[instr_line[1]]
     funct3    = function3[instr_line[0]]
@@ -281,6 +293,13 @@ def build_Stype_instr(instr_line):
     instr_line[2] = instr_line[2].split(sep='(')    #splitting third element in 2 elemnts
     instr_line = [instr_line[0],instr_line[1],instr_line[2][1],instr_line[2][0]] #reorder the elements in the initial string
     
+    #Verify if the immediate field is in the symbol_table
+    if instr_line[3] in symbol_table:
+        #Store address was calculated based on an offset provided by gp register
+        print(instr_line[3])
+        instr_line[3] = symbol_table[instr_line[3]]
+        print(instr_line[3])
+
     #Compute the entire immediate value into one string
     imm_11_0  = strval2strbin(instr_line[3],immediate_field_length)
     #Calculate the index for splitting the LSB and MSB from the 12 bit immediate value
@@ -419,21 +438,69 @@ def translate_menmonic(instr_line, current_PC):
 
 
 #+------------------------------------------------------------------------------------+#
+#| Function: translate_menmonic(string)                                               |#
+#| Description: This function is used to print the data memory map after the code is  |#
+#|              assembled                                                             |#
+#| Input:                                                                             |#
+#|    dictionary - a map of the data memory                                           |#
+#| Output:                                                                            |#
+#|    void                                                                            |#
+#+------------------------------------------------------------------------------------+#
+def print_data_memory_map(data_segment):
+    j = 0
+    line = ''
+    print("Data Memory Address" + "\t\t" + "Each 4 bytes of a line in Little Endian")
+    for i in data_seg:
+        if j == 0:
+            line = ''
+            hex_addr = hex(i)[2:]   #strip the '0x' prefix for now
+            hex_addr = hex_addr.zfill(8)          #make the hex number 8=32/4 characters long
+            hex_addr = '0x' + hex_addr
+        
+        j = (j+1)%4
+        hex_value = hex(int(data_seg[i],2))[2:]
+        hex_value = hex_value.zfill(2)          #make the hex number 2=8/4 characters long
+        hex_value = '0x' + hex_value
+        line = " " + hex_value + line
+        if j == 0:
+            print(hex_addr + "\t\t\t\t" + line)
+
+
+#Program Memory 64KB
+prog_seg_end_addr    = '0x0000FFFC'
+prog_seg_start_addr  = '0x00000000'
+
+#Data Memory 4KB
+data_seg_end_addr    = '0x10000FFC'
+data_seg_start_addr  = '0x10000000'
+
+#+------------------------------------------------------------------------------------+#
 #| Function: main()                                                                   |#
 #| Description: This is the main function                                             |#
 #| Input:                                                                             |#
 #| Output:                                                                            |#
 #+------------------------------------------------------------------------------------+#
 def main():
-    #Declare a pointer to the global string
-    global mnemonics
-    #Initialize PC with 0
-    PC = 0
-    
+    #Initialize variables
+    PC = 0 #TODO FIXME initialize with mem start and add condition in case of memory overflow
+    DATA_SEG_ADDR = int(data_seg_start_addr[2:],16) #strip the '0x' prefix and convert to decimal
+    max_data_seg_addr_val = int(data_seg_end_addr[2:],16)
+    segment_type = ''
+
+    #Initialize the global pointer at the middle of Data Memory
+    #This will help in accesing variables from memory by using indirect addressing
+    gp = int(DATA_SEG_ADDR + (max_data_seg_addr_val - DATA_SEG_ADDR)/2)
+
+    #TODO quick workaround
+    #Initialize the gp register with the address from the middle of the data memory segment 0x1000_0800
+    prog_seg[0] = 'addi  gp, zero,   0x800'
+    prog_seg[4] = 'lui   gp,         0x10000'
+    PC = 8
+
     #First Iteration
     #1) Strip the assembly code of comments & empty lines & spaces
     #2) Build the symbol table map
-    #3) TODO add support for data (data declaration) and text sections
+    #3) Generates the data_segment and program_segment
     with open("assembly.asm", "r") as asm_file:
         for line in asm_file:
             #Strip all whitespaces from the current line
@@ -447,44 +514,162 @@ def main():
             #Remove the comments from the lines that contains instructions
             line = line.split('#', 1)[0].strip()
             
-            if line.endswith(":"): #if line is an label
-                symbol_table[line[:-1]] = PC #save the PC for the label
-                #Labels are not real intructions, that is why they should not increase the PC value, only save it
-            else: #if the line is not a label than it is an instruction
-                mnemonics = mnemonics + line + '\n'
-                #Update PC address
-                PC += 4
+
+            if line.startswith(".section "):
+                    #Remove ".section" part of the string
+                    line = line.replace(".section ", "", 1)
+                    #Strip all whitespaces from the current line
+                    line = line.strip()
+                    #Save the segment type
+                    segment_type = line[1:]
+            else:
+                if segment_type == "text":
+                    if line.startswith("."):
+                        raise ValueError("Syntax Error! Unsupported RV32I Assembly Directive in text segment!")
+                        
+                    if line.endswith(":"): #if line is an label
+                        symbol_table[line[:-1]] = PC #save the PC for the label
+                        #Labels are not real intructions, that is why they should not increase the PC value, only save it
+                    else: #if the line is not a label than it is an instruction
+                        prog_seg[PC] = line
+                        #Update PC address
+                        PC += 4
+                elif segment_type == "data":
+                    #Split the string in 3 substrings (label + data_type + value)
+                    temp_line = line.split()
+                    data_type = ''
+    
+                    if len(temp_line) == 1 and temp_line[0].endswith(":"): #if line is only an label
+                        #Compute the address to store in symbol_table
+                        symbol_table[temp_line[0][:-1]] = compute_signed_Nbit_ta(12, gp, DATA_SEG_ADDR)
+                        continue #skip the rest of the code to the end of the loop
+                    elif temp_line[0].endswith(":"): #if the line is a label but there are other elements
+                        #Split the string in 3 substrings (label + data_type + value)
+                        line = line.split(" ", 2)
+                        #Compute the address to store in symbol_table
+                        symbol_table[temp_line[0][:-1]] = compute_signed_Nbit_ta(12, gp, DATA_SEG_ADDR)
+                        data_type = line[1] #save the data_type
+                        #Select only the values of the variable substring and replace , with spaces
+                        value = line[2].replace(",", " ")
+                    else: #if the line only contains a type declaration without a label save the data type
+                        #Split the string in 2 substrings (data_type + value)
+                        line = line.split(" ", 1)
+                        data_type = line[0]
+                        value = line[1].replace(",", " ")
+                        
+                    #Split the variable in case there are multiple
+                    value = value.split()
+                    
+                    for i in value:
+                        if DATA_SEG_ADDR < max_data_seg_addr_val:
+                            if data_type == ".string":
+                                #String variable declares only one variable at a time
+                                data_string = i
+                                #Strip the " chars from the string
+                                data_string = data_string.replace("\"", "")
+                                num_of_chars = len(data_string)
+                                #Add every char into the data_seg
+                                for j in range(num_of_chars):
+                                    #Transform each char of the string into their ASCII code and save it into data segment
+                                    ascii_code = str(ord(data_string[j]))
+                                    #Translate the ascii code to binary and add it to the data_segment
+                                    data_seg[DATA_SEG_ADDR] = strval2strbin(ascii_code,8)
+                                    #Increase the address by 1 because chars are 1 byte long
+                                    DATA_SEG_ADDR += 1
+                                #Add the null termination
+                                #Transform each char of the string into their ASCII code and save it into data segment
+                                data_seg[DATA_SEG_ADDR] = strval2strbin('0',8)
+                                #Increase the address by 1 because chars are 1 byte long
+                                DATA_SEG_ADDR += 1
+                            elif data_type == ".word":
+                                #Transorm the value in a binary string of 4 bytes
+                                binary_value = strval2strbin(i,32)
+                                for j in range(4):
+                                    #Save value for each byte from LSB to MSB of the binary value!!!
+                                    data_seg[DATA_SEG_ADDR] = binary_value[(3-j)*8:(4-j)*8]
+                                    #Increase the address by 1 for each byte
+                                    DATA_SEG_ADDR += 1
+                            elif data_type == ".byte":
+                                #Save value in binary
+                                data_seg[DATA_SEG_ADDR] = strval2strbin(i,8)
+                                #Increase the address by 1
+                                DATA_SEG_ADDR += 1
+                            elif data_type == ".space":
+                                #Add num_of_spaces spaces into the data memory
+                                num_of_spaces = int(i)
+                                for j in range(num_of_spaces):
+                                    #Insert a space
+                                    data_seg[DATA_SEG_ADDR] = strval2strbin('0',8)
+                                    #Increase the address by 1
+                                    DATA_SEG_ADDR += 1
+                            else:
+                                raise ValueError(f"Syntax Error! Unsupported type '{data_type}'!")
+                        else:
+                            raise ValueError("Assemble Error! Data Segment is full!")
+                else:
+                    raise ValueError(f"Syntax Error! Invalid Section: .'{segment_type}'. Expected '.data' or '.text'.")
 
     #Close the ASM code file:
     asm_file.close()
-
-    #Split the code into a list of instructions
-    mnemonics = mnemonics.split('\n')
-    #Remove last empty string
-    mnemonics.remove('')
-    #Reinitialize the PC with 0 for the second iteration
-    PC = 0
+    
 
     #Second Iteration
     #1) Convert the menmonics into machine code
-    #2) Generate the programming .bin/.hex files         
-    with open("machine_code.bin", "w") as bin_file, \
-         open("machine_code.hex", "w") as hex_file:
+    #2) Generate the programming .bin/.hex files for PFM memory
+    #2) Generate the programming .bin/.hex files for PFM memory  
+    with open("pfm.bin", "w") as bin_file, \
+         open("pfm.hex", "w") as hex_file:
       
-        for line in mnemonics:
+        for PC in prog_seg:
             #Trasnslate the assembly instruction into binary machine code
-            bin_line = translate_menmonic(line, PC)
+            bin_line = translate_menmonic(prog_seg[PC], PC)
             #Transfrom the binary coded instruction in hexadecimal as well
             hex_line = bin2hex_32bit(bin_line)
             #Write the machine code files in their specific format binary/hex
             bin_file.write(bin_line + '\n')
             hex_file.write(hex_line + '\n')
-            #Update PC
-            PC += 4
 
     #Close the .bin and .hex files:
     bin_file.close()
     hex_file.close()
+
+    with open("dfm.bin", "w") as bin_file, \
+         open("dfm.hex", "w") as hex_file:
+      
+        word_cnt = 0
+        bin_line = ''
+        #Exception: if the data_segment has a number of elements that it is not 
+        #           a multiple of 4 add 0's until this condition is met
+        if len(data_seg) % 4 != 0:
+            #Calculate how much elements are needed to fill the last line
+            num_of_zeros = 4 - (len(data_seg) % 4)
+            #Assign the pointer the next address after the last that was written
+            DATA_SEG_ADDR = max(data_seg.keys()) + 1
+            for i in range(num_of_zeros):
+                data_seg[DATA_SEG_ADDR] = strval2strbin('0', 8)
+                DATA_SEG_ADDR += 1
+        
+        for DATA_SEG_ADDR in data_seg:
+            #Trasnslate the data_seg map into binary
+            bin_line = data_seg[DATA_SEG_ADDR] + bin_line
+            #Count the number of bytes
+            word_cnt = (word_cnt + 1) % 4
+            
+            if word_cnt == 0:
+                #Transfrom the binary coded line in hexadecimal as well
+                hex_line = bin2hex_32bit(bin_line)
+                #Write the data memory files in their specific format binary/hex
+                bin_file.write(bin_line + '\n')
+                hex_file.write(hex_line + '\n')
+                #Reinitialize bin_lin as empty
+                bin_line = ""
+
+    #Close the .bin and .hex files:
+    bin_file.close()
+    hex_file.close()
+    
+    #Print the Data memory Map
+    print_data_memory_map(prog_seg)
 
 
 #+------------------------------------------------------------------------------------+#
@@ -492,8 +677,9 @@ def main():
 #+------------------------------------------------------------------------------------+#
 #Declare the symbol table as a map (dictionary)
 symbol_table = {}
-#Declare a string in which the mnemonics will be stored
-mnemonics = ''
+#Declare maps in which the program and data segments will be stored
+prog_seg = {}
+data_seg = {}
 
 
 #Execute the main()
