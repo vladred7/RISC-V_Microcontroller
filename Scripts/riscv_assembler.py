@@ -9,7 +9,6 @@
 #TODOs
 #add support for all RV32I assembly directives
 #add support for pseudo-instructions
-#add protection for variables with the same name
 
 # RISC-V opcode dictionary
 opc = {
@@ -261,9 +260,7 @@ def build_Itype_instr(instr_line):
     #Verify if the immediate field is in the symbol_table
     if instr_line[3] in symbol_table:
         #Store address was calculated based on an offset provided by gp register
-        print(instr_line[3])
         instr_line[3] = symbol_table[instr_line[3]]
-        print(instr_line[3])
 
     op        = opc[instr_line[0]]
     rd        = register_map[instr_line[1]]
@@ -296,9 +293,7 @@ def build_Stype_instr(instr_line):
     #Verify if the immediate field is in the symbol_table
     if instr_line[3] in symbol_table:
         #Store address was calculated based on an offset provided by gp register
-        print(instr_line[3])
         instr_line[3] = symbol_table[instr_line[3]]
-        print(instr_line[3])
 
     #Compute the entire immediate value into one string
     imm_11_0  = strval2strbin(instr_line[3],immediate_field_length)
@@ -467,11 +462,11 @@ def print_data_memory_map(data_segment):
 
 
 #Program Memory 64KB
-prog_seg_end_addr    = '0x0000FFFC'
+prog_seg_end_addr    = '0x0000FFFF'
 prog_seg_start_addr  = '0x00000000'
 
 #Data Memory 4KB
-data_seg_end_addr    = '0x10000FFC'
+data_seg_end_addr    = '0x10000FFF'
 data_seg_start_addr  = '0x10000000'
 
 #+------------------------------------------------------------------------------------+#
@@ -482,14 +477,14 @@ data_seg_start_addr  = '0x10000000'
 #+------------------------------------------------------------------------------------+#
 def main():
     #Initialize variables
-    PC = 0 #TODO FIXME initialize with mem start and add condition in case of memory overflow
+    PC = int(prog_seg_start_addr[2:],16) #strip the '0x' prefix and convert to decimal
     DATA_SEG_ADDR = int(data_seg_start_addr[2:],16) #strip the '0x' prefix and convert to decimal
     max_data_seg_addr_val = int(data_seg_end_addr[2:],16)
     segment_type = ''
 
     #Initialize the global pointer at the middle of Data Memory
     #This will help in accesing variables from memory by using indirect addressing
-    gp = int(DATA_SEG_ADDR + (max_data_seg_addr_val - DATA_SEG_ADDR)/2)
+    gp = int(DATA_SEG_ADDR + ((max_data_seg_addr_val + 1) - DATA_SEG_ADDR)/2)
 
     #TODO quick workaround
     #Initialize the gp register with the address from the middle of the data memory segment 0x1000_0800
@@ -528,7 +523,10 @@ def main():
                         raise ValueError("Syntax Error! Unsupported RV32I Assembly Directive in text segment!")
                         
                     if line.endswith(":"): #if line is an label
-                        symbol_table[line[:-1]] = PC #save the PC for the label
+                        if line[:-1] in symbol_table: #if the label already exists throw an error
+                            raise ValueError(f"Assemble Error! Label '{line[:-1]}' is already defined!")
+                        else:
+                            symbol_table[line[:-1]] = PC #save the PC for the label
                         #Labels are not real intructions, that is why they should not increase the PC value, only save it
                     else: #if the line is not a label than it is an instruction
                         prog_seg[PC] = line
@@ -541,13 +539,19 @@ def main():
     
                     if len(temp_line) == 1 and temp_line[0].endswith(":"): #if line is only an label
                         #Compute the address to store in symbol_table
-                        symbol_table[temp_line[0][:-1]] = compute_signed_Nbit_ta(12, gp, DATA_SEG_ADDR)
+                        if temp_line[0][:-1] in symbol_table: #if the variable already exists throw an error
+                            raise ValueError(f"Assemble Error! Variable '{temp_line[0][:-1]}' is already defined!")
+                        else:
+                            symbol_table[temp_line[0][:-1]] = compute_signed_Nbit_ta(12, gp, DATA_SEG_ADDR)
                         continue #skip the rest of the code to the end of the loop
                     elif temp_line[0].endswith(":"): #if the line is a label but there are other elements
                         #Split the string in 3 substrings (label + data_type + value)
                         line = line.split(" ", 2)
                         #Compute the address to store in symbol_table
-                        symbol_table[temp_line[0][:-1]] = compute_signed_Nbit_ta(12, gp, DATA_SEG_ADDR)
+                        if temp_line[0][:-1] in symbol_table: #if the variable already exists throw an error
+                            raise ValueError(f"Assemble Error! Variable '{temp_line[0][:-1]}' is already defined!")
+                        else:
+                            symbol_table[temp_line[0][:-1]] = compute_signed_Nbit_ta(12, gp, DATA_SEG_ADDR)
                         data_type = line[1] #save the data_type
                         #Select only the values of the variable substring and replace , with spaces
                         value = line[2].replace(",", " ")
@@ -561,7 +565,7 @@ def main():
                     value = value.split()
                     
                     for i in value:
-                        if DATA_SEG_ADDR < max_data_seg_addr_val:
+                        if DATA_SEG_ADDR <= max_data_seg_addr_val:
                             if data_type == ".string":
                                 #String variable declares only one variable at a time
                                 data_string = i

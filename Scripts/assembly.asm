@@ -48,4 +48,4 @@ label_02:
    addi  zero, zero, 0x00        #nop
    addi  zero, zero, 0x00        #nop
    addi  zero, zero, 0x00        #nop
-
+.section end

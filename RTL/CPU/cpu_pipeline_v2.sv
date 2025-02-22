@@ -52,8 +52,9 @@ module cpu_pipeline_v2 #(
    logic                   d_jmp;
    logic                   d_bra;
    logic            [2:0]  d_alu_op_sel;
+   logic            [1:0]  d_alu_a_src;
    logic                   d_alu_b_src;
-   logic            [1:0]  d_imd_src;
+   logic            [2:0]  d_imd_src;
    logic [DATA_WIDTH-1:0]  d_imd_ext_data;
    logic [DATA_WIDTH-1:0]  d_regfl_data_a;
    logic [DATA_WIDTH-1:0]  d_regfl_data_b;
@@ -63,6 +64,7 @@ module cpu_pipeline_v2 #(
    logic [DATA_WIDTH-1:0]  e_alu_in_b;
    logic                   e_alu_z_flag;
    logic [DATA_WIDTH-1:0]  e_alu_out;
+   logic [ADDR_WIDTH-1:0]  e_bra_target_addr;
    logic [ADDR_WIDTH-1:0]  e_pc_target_addr;
    logic                   e_pc_in_src;      //pc input mux selection
    logic [DATA_WIDTH-1:0]  m_rd_data;
@@ -96,6 +98,7 @@ module cpu_pipeline_v2 #(
       //    Output ports 
       .jmp           ( d_jmp                                   ),
       .bra           ( d_bra                                   ),
+      .alu_a_src     ( d_alu_a_src                             ),
       .alu_b_src     ( d_alu_b_src                             ),
       .mem_wr_en     ( d_mem_wr_en                             ),
       .regfl_wr_en   ( d_regfl_wr_en                           ),
@@ -118,6 +121,7 @@ module cpu_pipeline_v2 #(
             e_ctrl_stage_ff.e_jmp         <= d_jmp;
             e_ctrl_stage_ff.e_bra         <= d_bra;
             e_ctrl_stage_ff.e_alu_op_sel  <= d_alu_op_sel;
+            e_ctrl_stage_ff.e_alu_a_src   <= d_alu_a_src;
             e_ctrl_stage_ff.e_alu_b_src   <= d_alu_b_src;
          end
       end
@@ -311,8 +315,16 @@ module cpu_pipeline_v2 #(
       endcase
    end
 
-   assign e_alu_in_a = e_fwd_a_mux_out;
-   
+   //Select between mux out of src A, all 0's(LUI) and PC(AUIPC,JAL)
+   always_comb begin
+      e_alu_in_a = '0;
+      case (e_ctrl_stage.e_alu_a_src)
+         2'b00: e_alu_in_a = e_fwd_a_mux_out;
+         2'b10: e_alu_in_a = '0;
+         2'b11: e_alu_in_a = e_stage.e_pc_val;
+      endcase
+   end
+
    //Data forward mux for ALU source B
    always_comb begin
       e_fwd_b_mux_out = '0;
@@ -324,13 +336,7 @@ module cpu_pipeline_v2 #(
    end
 
    //Select between mux out of src B and immediate data
-   always_comb begin
-      e_alu_in_b = '0;
-      case (e_ctrl_stage.e_alu_b_src)
-         1'b0: e_alu_in_b = e_fwd_b_mux_out;
-         1'b1: e_alu_in_b = e_stage.e_imd_data;
-      endcase
-   end
+   assign e_alu_in_b = (e_ctrl_stage.e_alu_b_src) ? e_stage.e_imd_data : e_fwd_b_mux_out;
 
    cpu_alu #(
       .DATA_WIDTH(DATA_WIDTH)
@@ -344,8 +350,11 @@ module cpu_pipeline_v2 #(
       .alu_out       ( e_alu_out                               )
    );
 
-   //Calculate the target address for jump/branch operations
-   assign e_pc_target_addr = e_stage.e_pc_val + e_stage.e_imd_data;
+   //Calculate the target address for branch operations
+   assign e_bra_target_addr = e_stage.e_pc_val + e_stage.e_imd_data;
+
+   //Select the target address from ALU in case of jump otherwise select branch target address
+   assign e_pc_target_addr = (e_ctrl_stage.e_jmp) ? e_alu_out : e_bra_target_addr;
 
 
    //+--------------------------------------------------------------+//

@@ -181,7 +181,7 @@ module mcu_v2_pipeline #(
    // PFM Instance
    //==========================
    nvm_mem #(
-      .MEM_ADDR_WIDTH(ADDR_BUS_WIDTH),
+      .MEM_ADDR_WIDTH(ADDR_BUS_WIDTH), //TODO use ADDR_BUS_WIDTH-2 because the PFM only increments by 4?
       .MEM_DATA_WIDTH(DATA_BUS_WIDTH)
    ) pfm(
       //    Input ports
