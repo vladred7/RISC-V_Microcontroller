@@ -425,6 +425,10 @@ module cpu_pipeline_v2 #(
       //TODO add assertions
    `endif
 
+   //+--------------------------------------------------------------+//
+   //|                        RTL Debug Code                        |//
+   //+--------------------------------------------------------------+//
+
    `ifndef SYNTHESIS
       //Debug code zone -> this will be ignored during Synthesis
       cpu_opcode_t   debug_opcode_f;

@@ -17,7 +17,7 @@ module nvm_mem #(
 );
 
    //Define the memory map
-   logic [MEM_DATA_WIDTH-1:0] mem_map[0:(2**MEM_ADDR_WIDTH)-1];
+   logic [MEM_DATA_WIDTH-1:0] mem_map[0:((2**MEM_ADDR_WIDTH)-1)];
 //TODO should I remodel this to be a bi-directional port RAM?
    always_ff @(posedge clk)
       if (we)

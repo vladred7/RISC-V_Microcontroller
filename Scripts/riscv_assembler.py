@@ -536,7 +536,7 @@ def main():
                     #Split the string in 3 substrings (label + data_type + value)
                     temp_line = line.split()
                     data_type = ''
-    
+
                     if len(temp_line) == 1 and temp_line[0].endswith(":"): #if line is only an label
                         #Compute the address to store in symbol_table
                         if temp_line[0][:-1] in symbol_table: #if the variable already exists throw an error
@@ -546,7 +546,8 @@ def main():
                         continue #skip the rest of the code to the end of the loop
                     elif temp_line[0].endswith(":"): #if the line is a label but there are other elements
                         #Split the string in 3 substrings (label + data_type + value)
-                        line = line.split(" ", 2)
+                        line = " ".join(line.split()) #exception, remove any unnecessary space characters
+                        line = line.split(r' ', 2)
                         #Compute the address to store in symbol_table
                         if temp_line[0][:-1] in symbol_table: #if the variable already exists throw an error
                             raise ValueError(f"Assemble Error! Variable '{temp_line[0][:-1]}' is already defined!")

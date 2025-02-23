@@ -130,7 +130,7 @@ module mcu_v2_pipeline #(
       .sfr_rdonly_dout  ( chip_ctrl_sfr_rd   )
    );
 
-   assign chip_lp_mode = chip_ctrl_sfr_out.lpm;
+   assign chip_lp_mode = ~chip_ctrl_sfr_out.lpm;
    assign chip_sfr_rd_bus = chip_ctrl_sfr_rd;
 
    //==========================
@@ -139,7 +139,7 @@ module mcu_v2_pipeline #(
    assign sys_rd_bus =  en_mem_dfm ? dfm_rd_data :
                         en_mem_io  ? io_rd_bus   :
                         en_mem_sfr ? sfr_rd_bus  :
-                                     'x          ; //TODO for now propagate X but maybe it is a good idea to propagate 0's instead
+                                     'x          ; //TODO for now propagate X but this might affect the synthesis based on the tool engine
 
    cpu_pipeline_v2 #(
       .ADDR_WIDTH(ADDR_BUS_WIDTH),
@@ -152,7 +152,7 @@ module mcu_v2_pipeline #(
       .pfm_rd_instr  ( pfm_rd_instr             ),
       .dfm_rd_data   ( sys_rd_bus               ),
       //    Output ports definition
-      .pfm_req_addr  ( pfm_req_addr             ), //FIXME maybe can add HW protection for end of memory by wiring MSB bit of the pfm_+req addr to the memory to 0
+      .pfm_req_addr  ( pfm_req_addr             ), //FIXME maybe can add HW protection for end of memory by wiring MSB bit of the pfm_req addr to the memory to 0
       .dfm_req_addr  ( cpu_req_addr             ),
       .dfm_wr_en     ( cpu_wr_en                ),
       .dfm_wr_data   ( cpu_wr_data              )
@@ -181,13 +181,13 @@ module mcu_v2_pipeline #(
    // PFM Instance
    //==========================
    nvm_mem #(
-      .MEM_ADDR_WIDTH(ADDR_BUS_WIDTH), //TODO use ADDR_BUS_WIDTH-2 because the PFM only increments by 4?
+      .MEM_ADDR_WIDTH(ADDR_BUS_WIDTH-2), //TODO use ADDR_BUS_WIDTH-2 because the PFM only increments by 4?
       .MEM_DATA_WIDTH(DATA_BUS_WIDTH)
    ) pfm(
       //    Input ports
       .clk           ( sys_clk                  ),
       .we            ( 1'b0                     ), //TODO PFM should support write only on programming
-      .addr          ( pfm_req_addr             ), //TODO select only necessary bits (look in mem decoder)
+      .addr          ( pfm_req_addr[31:2]       ), //TODO select only necessary bits (look in mem decoder)
       .wd            ( cpu_wr_data              ),
       //    Output ports
       .rd            ( pfm_rd_instr             )
@@ -198,13 +198,13 @@ module mcu_v2_pipeline #(
    // DFM Instance
    //==========================
    nvm_mem #(
-      .MEM_ADDR_WIDTH(ADDR_BUS_WIDTH),
+      .MEM_ADDR_WIDTH(ADDR_BUS_WIDTH-6),
       .MEM_DATA_WIDTH(DATA_BUS_WIDTH)
    ) dfm(
       //    Input ports
       .clk           ( sys_clk                  ),
       .we            ( dfm_wr_en                ),
-      .addr          ( cpu_req_addr             ), //TODO select only necessary bits (look in mem decoder)
+      .addr          ( cpu_req_addr[27:2]       ), //TODO select only necessary bits (look in mem decoder)
       .wd            ( cpu_wr_data              ),
       //    Output ports
       .rd            ( dfm_rd_data              )
