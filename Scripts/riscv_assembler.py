@@ -488,8 +488,8 @@ def main():
 
     #TODO quick workaround
     #Initialize the gp register with the address from the middle of the data memory segment 0x1000_0800
-    prog_seg[0] = 'addi  gp, zero,   0x800'
-    prog_seg[4] = 'lui   gp,         0x10000'
+    prog_seg[0] = 'lui   gp,         0x10001000' #load a bigger upper immediate because addi is signed op
+    prog_seg[4] = 'addi  gp, gp,     0x800'      #now addi will add 0xFFFF_F800 to the previous value
     PC = 8
 
     #First Iteration

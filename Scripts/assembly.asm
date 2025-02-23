@@ -21,9 +21,9 @@ start:
    #Perform some operations
    addi  t2,   t0,   0x05        #t2 = t0 + 5 = 7
    addi  t2,   t0,   0x05        #t2 = t0 + 5 = 7
-   sw    t0,         x(gp)       #mem(40) = t0 = 2
-   sw    t1,         y(gp)       #mem(41) = t1 = 1
-   sw    t2,         z(gp)       #mem(42) = t2 = 7
+   sw    t0,         x(gp)       #mem(x) = t0 = 2
+   sw    t1,         y(gp)       #mem(y) = t1 = 1
+   sw    t2,         z(gp)       #mem(z) = t2 = 7
    add   s0,   t0,   t1          #s0 = t0 + t1 = 3
    add   s1,   t0,   t2          #s1 = t0 + t2 = 9
    sub   s1,   s1,   s0          #s1 = s1 - s0 = 6
@@ -48,4 +48,4 @@ label_02:
    addi  zero, zero, 0x00        #nop
    addi  zero, zero, 0x00        #nop
    addi  zero, zero, 0x00        #nop
-.section end
+.section .end

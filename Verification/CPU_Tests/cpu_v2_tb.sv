@@ -57,8 +57,8 @@ module cpu_v2_tb ();
 
    //Load tb_mem with the binary program
    initial begin
-      $readmemb("machine_code_pfm.bin", tb_pfm);
-      $readmemb("machine_code_dfm.bin", tb_dfm);
+      $readmemb("pfm.bin", tb_pfm);
+      $readmemb("dfm.bin", tb_dfm);
    end
 
    //PFM Memory model
@@ -75,8 +75,10 @@ module cpu_v2_tb ();
       forever begin
          @(posedge tb_clk)
          #2; //add a small delay to avoid race conditions
-         tb_dfm_rd_data = tb_dfm[tb_dfm_req_addr[31:2]]; //Read DFM
-         if(tb_dfm_wr_en) tb_dfm[tb_dfm_req_addr[31:2]] = tb_dfm_wr_data; //Write DFM
+         if(tb_dfm_req_addr[31:28] == 4'b0001) begin
+            tb_dfm_rd_data = tb_dfm[tb_dfm_req_addr[27:2]]; //Read DFM
+            if(tb_dfm_wr_en) tb_dfm[tb_dfm_req_addr[27:2]] = tb_dfm_wr_data; //Write DFM
+         end
       end
    end
 
