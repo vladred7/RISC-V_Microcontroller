@@ -5,12 +5,17 @@
 
 package pkg_cpu_typedefs;
 
-   typedef enum bit [2:0] {
-      ADD   = 3'b000,
-      SUB   = 3'b001,
-      AND   = 3'b010,
-      OR    = 3'b011,
-      SLT   = 3'b101
+   typedef enum bit [3:0] {
+      ADD   = 4'b0000,
+      SUB   = 4'b0001,
+      AND   = 4'b0010,
+      OR    = 4'b0011,
+      XOR   = 4'b0100,
+      SLT   = 4'b0101,
+      SLL   = 4'b0110,
+      SRA   = 4'b0111,
+      SRL   = 4'b1000,
+      SLTU  = 4'b1001
    } alu_opcode_t;
    
    typedef enum bit [6:0] { //These instruction opcodes represents the RV32I set
@@ -119,7 +124,7 @@ package pkg_cpu_typedefs;
       logic        e_mem_wr_en;
       logic        e_jmp;
       logic        e_bra;
-      logic [ 2:0] e_alu_op_sel;
+      logic [ 3:0] e_alu_op_sel;
       logic [ 1:0] e_alu_a_src;
       logic        e_alu_b_src;
    } execute_ctrl_path_t;

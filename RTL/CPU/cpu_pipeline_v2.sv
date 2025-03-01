@@ -51,7 +51,7 @@ module cpu_pipeline_v2 #(
    logic                   d_mem_wr_en;
    logic                   d_jmp;
    logic                   d_bra;
-   logic            [2:0]  d_alu_op_sel;
+   logic            [3:0]  d_alu_op_sel;
    logic            [1:0]  d_alu_a_src;
    logic                   d_alu_b_src;
    logic            [2:0]  d_imd_src;

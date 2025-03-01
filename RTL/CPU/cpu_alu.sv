@@ -9,7 +9,7 @@ module cpu_alu #(
    //    Input ports definition
    input  [DATA_WIDTH-1:0] in_a,
    input  [DATA_WIDTH-1:0] in_b,
-   input             [2:0] op_sel,
+   input             [3:0] op_sel,
    //    Output ports definition
    output                  z_flag,
    output [DATA_WIDTH-1:0] alu_out
@@ -18,20 +18,28 @@ module cpu_alu #(
    import pkg_cpu_typedefs::*;
 
    logic[DATA_WIDTH-1:0] result;
+   logic[DATA_WIDTH-1:0] sub;
+
+   assign sub = in_a - in_b;
    
    //Compute ALU Result
    always_comb begin
       result = '0; //Default case
       case (op_sel)
-         ADD: result = in_a + in_b;
-         SUB: result = in_a - in_b;
-         AND: result = in_a & in_b;
-         OR : result = in_a | in_b;
-         SLT: result = in_a < in_b;
+         ADD : result = in_a + in_b;
+         SUB : result = sub;
+         AND : result = in_a & in_b;
+         OR  : result = in_a | in_b;
+         XOR : result = in_a ^ in_b;
+         SLT : result = (in_a[DATA_WIDTH-1] != in_b[DATA_WIDTH-1]) ? in_a[DATA_WIDTH-1] : sub[DATA_WIDTH-1];
+         SLL : result = in_a << in_b[4:0];
+         SRA : result = in_a >>> in_b[4:0];
+         SRL : result = in_a >> in_b[4:0];
+         SLTU: result = sub[DATA_WIDTH-1];
       endcase
    end
 
-   //Assign alu_out the restul
+   //Assign alu_out the result
    assign alu_out = result;
 
    //Compute ALU Flags

@@ -16,7 +16,7 @@ module cpu_control_unit_v2(
    output       mem_wr_en,
    output       regfl_wr_en,
    output [2:0] imd_src,
-   output [2:0] alu_op_sel,
+   output [3:0] alu_op_sel,
    output [1:0] result_src
 );
    
@@ -30,7 +30,7 @@ module cpu_control_unit_v2(
    //==========================
    logic [ 1:0]   alu_op;
    logic [13:0]   ctrl_vect;
-   logic [ 2:0]   alu_dec_result;
+   logic [ 3:0]   alu_dec_result;
 
    //======================================================//
    // CPU Decoder                                          //
@@ -87,15 +87,19 @@ module cpu_control_unit_v2(
    //|                Inputs                |   Output   |//
    //-----------------------------------------------------//
    //| alu_op | funct3 | opc[5] | funct7[5] | alu_op_sel |//
-   //|   00   |    x   |    x   |     x     |     000    |//
-   //|   01   |    x   |    x   |     x     |     001    |//
-   //|   10   |   000  |    0   |     0     |     000    |//
-   //|   10   |   000  |    0   |     1     |     000    |//
-   //|   10   |   000  |    1   |     0     |     000    |//
-   //|   10   |   000  |    1   |     1     |     001    |//
-   //|   10   |   010  |    x   |     x     |     101    |//
-   //|   10   |   110  |    x   |     x     |     011    |//
-   //|   10   |   111  |    x   |     x     |     010    |//
+   //|   00   |    x   |    x   |     x     |    ADD     |//
+   //|   01   |    x   |    x   |     x     |    SUB     |//
+   //|   10   |   000  |    0   |     x     |    ADD     |//
+   //|   10   |   000  |    1   |     0     |    ADD     |//
+   //|   10   |   000  |    1   |     1     |    SUB     |//
+   //|   10   |   001  |    x   |     x     |    SLL     |//
+   //|   10   |   010  |    x   |     x     |    SLT     |//
+   //|   10   |   011  |    x   |     x     |    SLTU    |//
+   //|   10   |   100  |    x   |     x     |    XOR     |//
+   //|   10   |   101  |    x   |     0     |    SRL     |//
+   //|   10   |   101  |    x   |     1     |    SRA     |//
+   //|   10   |   110  |    x   |     x     |    OR      |//
+   //|   10   |   111  |    x   |     x     |    AND     |//
    //-----------------------------------------------------//
    always_comb begin
       alu_dec_result = '0;
@@ -104,8 +108,12 @@ module cpu_control_unit_v2(
          2'b01:   alu_dec_result = SUB;
          2'b10:   begin
                      case (funct3)
-                        3'b000:  alu_dec_result = (opc[5] & funct7) ? SUB : ADD; 
+                        3'b000:  alu_dec_result = (opc[5] & funct7) ? SUB : ADD;
+                        3'b001:  alu_dec_result = SLL;
                         3'b010:  alu_dec_result = SLT;
+                        3'b011:  alu_dec_result = SLTU;
+                        3'b100:  alu_dec_result = XOR;
+                        3'b101:  alu_dec_result = (funct7) ? SRA : SRL;
                         3'b110:  alu_dec_result = OR;
                         3'b111:  alu_dec_result = AND;
                      endcase

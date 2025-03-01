@@ -14,10 +14,26 @@
 opc = {
    'lw'    : '0000011',   'LW'    : '0000011',    #load word
    'addi'  : '0010011',   'ADDI'  : '0010011',    #add immediate
+   'slli'  : '0010011',   'SLLI'  : '0010011',    #shift left logical immediate
+   'slti'  : '0010011',   'SLTI'  : '0010011',    #set less than immediate
+   'sltiu' : '0010011',   'SLTIU' : '0010011',    #set less than immediate unsigned
+   'xori'  : '0010011',   'XORI'  : '0010011',    #xor immediate
+   'srli'  : '0010011',   'SRLI'  : '0010011',    #shift right logical immediate
+   'srai'  : '0010011',   'SRAI'  : '0010011',    #shift right arithmetic immediate
+   'ori'   : '0010011',   'ORI'   : '0010011',    #or immediate
+   'andi'  : '0010011',   'ANDI'  : '0010011',    #and immediate
    'auipc' : '0010111',   'AUIPC' : '0010111',    #add upper immediate to PC
    'sw'    : '0100011',   'SW'    : '0100011',    #store word
    'add'   : '0110011',   'ADD'   : '0110011',    #add
    'sub'   : '0110011',   'SUB'   : '0110011',    #subtract
+   'sll'   : '0110011',   'SLL'   : '0110011',    #shift left logical
+   'slt'   : '0110011',   'SLT'   : '0110011',    #set less than
+   'sltu'  : '0110011',   'SLTU'  : '0110011',    #set less than unsigned
+   'xor'   : '0110011',   'XOR'   : '0110011',    #xor
+   'srl'   : '0110011',   'SRL'   : '0110011',    #shift right logical
+   'sra'   : '0110011',   'SRA'   : '0110011',    #shift right arithmetic
+   'or'    : '0110011',   'OR'    : '0110011',    #or
+   'and'   : '0110011',   'AND'   : '0110011',    #and
    'lui'   : '0110111',   'LUI'   : '0110111',    #load upper immediate
    'beq'   : '1100011',   'BEQ'   : '1100011',    #branch if equal
    'bne'   : '1100011',   'BNE'   : '1100011',    #branch if not equal
@@ -29,10 +45,26 @@ opc = {
 instrcution_type = {
    'lw'    : 'I',   'LW'    : 'I',    #load word
    'addi'  : 'I',   'ADDI'  : 'I',    #add immediate
+   'slli'  : 'I',   'SLLI'  : 'I',    #shift left logical immediate
+   'slti'  : 'I',   'SLTI'  : 'I',    #set less than immediate
+   'sltiu' : 'I',   'SLTIU' : 'I',    # set less than immediate unsigned
+   'xori'  : 'I',   'XORI'  : 'I',    #xor immediate
+   'srli'  : 'I',   'SRLI'  : 'I',    #shift right logical immediate
+   'srai'  : 'I',   'SRAI'  : 'I',    #shift right arithmetic immediate
+   'ori'   : 'I',   'ORI'   : 'I',    #or immediate
+   'andi'  : 'I',   'ANDI'  : 'I',    #and immediate
    'auipc' : 'U',   'AUIPC' : 'U',    #add upper immediate to PC
    'sw'    : 'S',   'SW'    : 'S',    #store word
    'add'   : 'R',   'ADD'   : 'R',    #add
    'sub'   : 'R',   'SUB'   : 'R',    #subtract
+   'sll'   : 'R',   'SLL'   : 'R',    #shift left logical
+   'slt'   : 'R',   'SLT'   : 'R',    #set less than
+   'sltu'  : 'R',   'SLTU'  : 'R',    #set less than unsigned
+   'xor'   : 'R',   'XOR'   : 'R',    #xor
+   'srl'   : 'R',   'SRL'   : 'R',    #shift right logical
+   'sra'   : 'R',   'SRA'   : 'R',    #shift right arithmetic
+   'or'    : 'R',   'OR'    : 'R',    #or
+   'and'   : 'R',   'AND'   : 'R',    #and
    'lui'   : 'U',   'LUI'   : 'U',    #load upper immediate
    'beq'   : 'B',   'BEQ'   : 'B',    #branch if equal
    'bne'   : 'B',   'BNE'   : 'B',    #branch if not equal
@@ -44,17 +76,44 @@ instrcution_type = {
 function3 = {
    'lw'    :  '010',    'LW'    :  '010',
    'addi'  :  '000',    'ADDI'  :  '000',
+   'slli'  :  '001',    'SLLI'  :  '001',
+   'slti'  :  '010',    'SLTI'  :  '010',
+   'sltiu' :  '011',    'SLTIU' :  '011',
+   'xori'  :  '100',    'XORI'  :  '100',
+   'srli'  :  '101',    'SRLI'  :  '101',
+   'srai'  :  '101',    'SRAI'  :  '101',
+   'ori'   :  '110',    'ORI'   :  '110',
+   'andi'  :  '111',    'ANDI'  :  '111',
    'sw'    :  '010',    'SW'    :  '010',
    'add'   :  '000',    'ADD'   :  '000',
    'sub'   :  '000',    'SUB'   :  '000',
+   'sll'   :  '001',    'SLL'   :  '001',
+   'slt'   :  '010',    'SLT'   :  '010',
+   'sltu'  :  '011',    'SLTU'  :  '011',
+   'xor'   :  '100',    'XOR'   :  '100',
+   'srl'   :  '101',    'SRL'   :  '101',
+   'sra'   :  '101',    'SRA'   :  '101',
+   'or'    :  '110',    'OR'    :  '110',
+   'and'   :  '111',    'AND'   :  '111',
    'beq'   :  '000',    'BEQ'   :  '000',
    'bne'   :  '001',    'BNE'   :  '001'
 }
 
-# R-type Instruction Funct7 dictionary
+# I-Type/R-type Instruction Funct7 dictionary
 function7 = {
+   'slli'  :  '0000000',   'SLLI'  :  '0000000', 
+   'srli'  :  '0000000',   'SRLI'  :  '0000000', 
+   'srai'  :  '0100000',   'SRAI'  :  '0100000', 
    'add'   :  '0000000',   'ADD'   :  '0000000',
-   'sub'   :  '0100000',   'SUB'   :  '0100000'
+   'sub'   :  '0100000',   'SUB'   :  '0100000',
+   'sll'   :  '0000000',   'SLL'   :  '0000000',
+   'slt'   :  '0000000',   'SLT'   :  '0000000',
+   'sltu'  :  '0000000',   'SLTU'  :  '0000000',
+   'xor'   :  '0000000',   'XOR'   :  '0000000',
+   'srl'   :  '0000000',   'SRL'   :  '0000000',
+   'sra'   :  '0100000',   'SRA'   :  '0100000',
+   'or'    :  '0000000',   'OR'    :  '0000000',
+   'and'   :  '0000000',   'AND'   :  '0000000'
 }
 
 # Register map dictionary
@@ -496,7 +555,7 @@ def main():
     #1) Strip the assembly code of comments & empty lines & spaces
     #2) Build the symbol table map
     #3) Generates the data_segment and program_segment
-    with open("assembly.asm", "r") as asm_file:
+    with open("test_prog_01.asm", "r") as asm_file:
         for line in asm_file:
             #Strip all whitespaces from the current line
             line = line.strip()

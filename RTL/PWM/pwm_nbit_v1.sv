@@ -166,10 +166,10 @@ module pwm_nbit_v1 #(
    assign pwm_tmr_value = pwm_tmr_value_ff;
 
    //PWM Events Logic //TODO can speed up here
-   assign pr_match = (pwm_tmr_value == shadow_pr);
-   assign dc_match = (pwm_tmr_value == shadow_dc);
-   assign ph_match = (pwm_tmr_value == shadow_ph);
-   assign of_match = (pwm_tmr_value == shadow_of);
+   assign pr_match = (pwm_tmr_value == shadow_pr) & pwm_ctrl_reg.on;
+   assign dc_match = (pwm_tmr_value == shadow_dc) & pwm_ctrl_reg.on;
+   assign ph_match = (pwm_tmr_value == shadow_ph) & pwm_ctrl_reg.on;
+   assign of_match = (pwm_tmr_value == shadow_of) & pwm_ctrl_reg.on;
 
    always_ff @(posedge pwm_clk or negedge sys_rst_n) begin
       if(!sys_rst_n) begin

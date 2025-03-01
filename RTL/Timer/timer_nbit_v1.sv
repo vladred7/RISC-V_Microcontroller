@@ -155,9 +155,9 @@ module timer_nbit_v1 #(
    assign tmr_value = tmr_value_ff;
 
    //Timer events logic
-   assign match0  = (tmr_value == tmr_match_val0_reg.tmr_mch_val0);
-   assign match1  = (tmr_value == tmr_match_val1_reg.tmr_mch_val1);
-   assign ovf     = tmr_value_comb[32];
+   assign match0  = (tmr_value == tmr_match_val0_reg.tmr_mch_val0) & tmr_ctrl_reg.on;
+   assign match1  = (tmr_value == tmr_match_val1_reg.tmr_mch_val1) & tmr_ctrl_reg.on;
+   assign ovf     = tmr_value_comb[32] & tmr_ctrl_reg.on;
 
    always_ff @(posedge tmr_clk or negedge sys_rst_n) begin
       if(!sys_rst_n) begin
