@@ -61,6 +61,13 @@ module tmr_32bit_v1 #(
    //==========================
    // SFR Instances
    //==========================
+   logic [DATA_WIDTH-1:0] sw_so_tmr_ctrl;
+   logic [DATA_WIDTH-1:0] sw_val_tmr_ctrl;
+   
+   //SW Set only bits protection
+   assign sw_so_tmr_ctrl  = sys_sw_value | (tmr_ctrl_sfr_out & 32'h0000_00CE);
+   assign sw_val_tmr_ctrl = sw_so_tmr_ctrl;
+
    sfr_module_v1 #(
       .SFR_ADDR_WIDTH(ADDR_WIDTH),
       .SFR_WIDTH(DATA_WIDTH),
@@ -78,7 +85,7 @@ module tmr_32bit_v1 #(
       .sys_wr_en        ( sys_wr_en          ),
       .sfr_hw_upate     ( hw_up_tmr_ctrl     ),
       .sfr_hw_value     ( hw_val_tmr_ctrl    ),
-      .sfr_sw_value     ( sys_sw_value       ),
+      .sfr_sw_value     ( sw_val_tmr_ctrl    ),
       //    Output ports
       .sfr_dout         ( tmr_ctrl_sfr_out   ),
       .sfr_rdonly_dout  ( tmr_ctrl_sfr_rd    )

@@ -67,6 +67,13 @@ module pwm_16bit_v1 #(
    //==========================
    // SFR Instances
    //==========================
+   logic [DATA_WIDTH-1:0] sw_so_pwm_ctrl;
+   logic [DATA_WIDTH-1:0] sw_val_pwm_ctrl;
+   
+   //SW Set only bits protection
+   assign sw_so_pwm_ctrl  = sys_sw_value | (pwm_ctrl_sfr_out & 32'h0000_001E);
+   assign sw_val_pwm_ctrl = sw_so_pwm_ctrl;
+
    sfr_module_v1 #(
       .SFR_ADDR_WIDTH(ADDR_WIDTH),
       .SFR_WIDTH(DATA_WIDTH),
@@ -84,7 +91,7 @@ module pwm_16bit_v1 #(
       .sys_wr_en        ( sys_wr_en          ),
       .sfr_hw_upate     ( hw_up_pwm_ctrl     ),
       .sfr_hw_value     ( hw_val_pwm_ctrl    ),
-      .sfr_sw_value     ( sys_sw_value       ),
+      .sfr_sw_value     ( sw_val_pwm_ctrl    ),
       //    Output ports
       .sfr_dout         ( pwm_ctrl_sfr_out   ),
       .sfr_rdonly_dout  ( pwm_ctrl_sfr_rd    )

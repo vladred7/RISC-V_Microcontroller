@@ -555,7 +555,7 @@ def main():
     #1) Strip the assembly code of comments & empty lines & spaces
     #2) Build the symbol table map
     #3) Generates the data_segment and program_segment
-    with open("test_prog_01.asm", "r") as asm_file:
+    with open("test_prog_03.asm", "r") as asm_file:
         for line in asm_file:
             #Strip all whitespaces from the current line
             line = line.strip()
