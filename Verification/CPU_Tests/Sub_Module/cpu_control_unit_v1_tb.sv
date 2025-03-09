@@ -3,11 +3,11 @@
 //# Description: Testbench for control unit of the multicycle CPU aka v1                 #
 //########################################################################################
 
-module cpu_control_unit_tb ();
+module cpu_control_unit_v1_tb ();
 
    import pkg_verification_utils::*;
 
-   cpu_control_unit dut(
+   cpu_control_unit_v1 dut(
       //    Input ports
       .clk           ( tb_clk           ),
       .rst_n         ( tb_rst_n         ),
@@ -270,4 +270,4 @@ module cpu_control_unit_tb ();
       $finish;   
    end
 
-endmodule : cpu_control_unit_tb
+endmodule : cpu_control_unit_v1_tb

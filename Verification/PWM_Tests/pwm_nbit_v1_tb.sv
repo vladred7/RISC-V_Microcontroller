@@ -355,10 +355,10 @@ module pwm_nbit_v1_tb#(
       endfunction : update_timer
 
       function void update_match_event_outputs();
-         pr_mch = (q_tmr === q_pr_val);
-         dc_mch = (q_tmr === q_dc_val);
-         ph_mch = (q_tmr === q_ph_val);
-         of_mch = (q_tmr === q_of_val);
+         pr_mch = (q_tmr === q_pr_val) & pwm_ctrl_sfr_out.on;
+         dc_mch = (q_tmr === q_dc_val) & pwm_ctrl_sfr_out.on;
+         ph_mch = (q_tmr === q_ph_val) & pwm_ctrl_sfr_out.on;
+         of_mch = (q_tmr === q_of_val) & pwm_ctrl_sfr_out.on;
          if(tb_rst_n) begin
             pr_ev = q_pr_ev && pwm_ctrl_sfr_out.prm_en;
             dc_ev = q_dc_ev && pwm_ctrl_sfr_out.dcm_en;
@@ -366,7 +366,7 @@ module pwm_nbit_v1_tb#(
             of_ev = q_of_ev && pwm_ctrl_sfr_out.ofm_en;
          end
       endfunction : update_match_event_outputs
-
+ 
       function void update_pwm_out();
          bit pwm_val;
 

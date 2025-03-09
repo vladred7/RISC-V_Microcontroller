@@ -321,9 +321,9 @@ module timer_nbit_v1_tb#(
       endfunction : update_timer
 
       function void update_match_event_outputs();
-         match0 = (q_tmr === tmr_mval0_sfr_out);
-         match1 = (q_tmr === tmr_mval1_sfr_out);
-         ovf    = (  tmr[N] === 1'b1);
+         match0 = (q_tmr === tmr_mval0_sfr_out) & tmr_ctrl_sfr_out.on;
+         match1 = (q_tmr === tmr_mval1_sfr_out) & tmr_ctrl_sfr_out.on;
+         ovf    = (  tmr[N] === 1'b1)           & tmr_ctrl_sfr_out.on;
          if(tb_rst_n) begin
             match0_ev = q_match0 && tmr_ctrl_sfr_out.match0_en;
             match1_ev = q_match1 && tmr_ctrl_sfr_out.match1_en;

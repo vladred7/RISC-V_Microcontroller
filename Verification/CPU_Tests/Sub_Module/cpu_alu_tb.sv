@@ -38,15 +38,22 @@ module cpu_alu_tb ();
 
    function logic [32:0] alu_model(logic [31:0] a, logic [31:0] b, logic [31:0] op);
       logic [31:0] result;
+      logic [31:0] diff;
       logic        z;
 
       result = 0;
+      diff = a - b;
       case (op)
-         ADD: result = a + b;
-         SUB: result = a - b;
-         AND: result = a & b;
-         OR : result = a | b;
-         SLT: result = a < b;
+         ADD : result = a + b;
+         SUB : result = a - b;
+         AND : result = a & b;
+         OR  : result = a | b;
+         XOR : result = a ^ b;
+         SLT : result = (a[31] != b[31]) ? a[31] : diff[31];
+         SLL : result = a <<  b[4:0];
+         SRA : result = a >>> b[4:0];
+         SRL : result = a >>  b[4:0];
+         SLTU: result = a < b;
       endcase
 
       z = (result === 0) ? 1'b1 : 1'b0;

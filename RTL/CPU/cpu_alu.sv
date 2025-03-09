@@ -18,7 +18,7 @@ module cpu_alu #(
    import pkg_cpu_typedefs::*;
 
    logic[DATA_WIDTH-1:0] result;
-   logic[DATA_WIDTH-1:0] sub;
+   logic[DATA_WIDTH:0] sub;
 
    assign sub = in_a - in_b;
    
@@ -27,15 +27,15 @@ module cpu_alu #(
       result = '0; //Default case
       case (op_sel)
          ADD : result = in_a + in_b;
-         SUB : result = sub;
+         SUB : result = sub[DATA_WIDTH-1:0];
          AND : result = in_a & in_b;
          OR  : result = in_a | in_b;
          XOR : result = in_a ^ in_b;
-         SLT : result = (in_a[DATA_WIDTH-1] != in_b[DATA_WIDTH-1]) ? in_a[DATA_WIDTH-1] : sub[DATA_WIDTH-1];
+         SLT : result = (in_a[DATA_WIDTH-1] != in_b[DATA_WIDTH-1]) ? in_a[DATA_WIDTH-1] : sub[DATA_WIDTH];
          SLL : result = in_a << in_b[4:0];
          SRA : result = in_a >>> in_b[4:0];
          SRL : result = in_a >> in_b[4:0];
-         SLTU: result = sub[DATA_WIDTH-1];
+         SLTU: result = sub[DATA_WIDTH];
       endcase
    end
 
