@@ -1,5 +1,8 @@
+//######################################## Header ########################################
+//# Author: Vlad Rosu                                                                    #
+//# Description: Program to wait 5ms for multiple iterations using the timer module      #
+//########################################################################################
 
-#Simple asm program for testing
 .section .data
 dcoctr: .word 0x00000201
 dcocnt: .word 0x0000007C

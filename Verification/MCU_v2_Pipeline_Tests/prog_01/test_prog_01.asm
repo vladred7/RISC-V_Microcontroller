@@ -1,5 +1,8 @@
+//######################################## Header ########################################
+//# Author: Vlad Rosu                                                                    #
+//# Description: Program to test PWM & Timer concurent functionality                     #
+//########################################################################################
 
-#Simple asm program for testing
 .section .data
 pwm_cfg0: .word 0x00100028
 pwm_cfg1: .word 0x00260000

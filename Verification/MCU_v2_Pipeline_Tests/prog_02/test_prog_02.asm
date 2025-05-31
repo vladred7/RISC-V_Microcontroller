@@ -1,5 +1,8 @@
+//######################################## Header ########################################
+//# Author: Vlad Rosu                                                                    #
+//# Description: Program to generate tri-phase 120* PWM signals                          #
+//########################################################################################
 
-#Simple asm program for testing
 .section .data
 pwm_cfg0: .word 0x00190031
 pwm_cfg1: .word 0x00110000

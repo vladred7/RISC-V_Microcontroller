@@ -7,4 +7,3 @@ pkg_sfrs_definition.sv
 
 nvm_mem.sv
 sfr_module_v1.sv
-sfr_map.sv

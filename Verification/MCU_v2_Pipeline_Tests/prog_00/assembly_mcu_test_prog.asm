@@ -1,3 +1,7 @@
+//######################################## Header ########################################
+//# Author: Vlad Rosu                                                                    #
+//# Description: Basic assembly test for Pipeline MCU                                    #
+//########################################################################################
 
 #Simple asm program for testing
 .section .data

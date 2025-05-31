@@ -76,13 +76,13 @@ module cpu_hazard_unit (
    //+--------------------------------------------------------------+//
 
    // Branch Hazards
-   //Note: Currently the CPU predict that the banch will not be taken (because for example loops do not take the branch for many iterations)
+   //Note: Currently the CPU predict that the branch will not be taken (because for example loops do not take the branch for many iterations)
    //TODO: If there is time this could be upgraded to a branch predictor buffer with 3 bits that saves the last 3 branch operation if they or 
    //TODO: taken or not and predict if the branch should be taken from decode stage instead (like it was done in the Pentium 4 CPU) -> for that 
    //TODO: I need to move the PCTarget adder in the Decode phase
    //Note: Solved branch hazard by invalidating Execute and Decode Stages if the branch is taken aka PC_SRC is 1 meaning 
    //the PC is written with the value computed by the ALU, so because it takes 2 clocks to see if the branch is taken the 
-   //last two fetched in structions are calculated from the PC address associated with the branch instruction
+   //last two fetched instructions are calculated from the PC address associated with the branch instruction
    assign e_flush = load_hazard_detected | pc_src; //Flush the Execute Stage in case of load or branch hazard
    assign d_flush = pc_src;                        //Flush The Decode Stage in case of a branch hazard
 
